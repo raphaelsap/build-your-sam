@@ -1,12 +1,5 @@
 name: Deploy to Cloud Foundry
-uses: citizen-of-planet-earth/cf-cli-action@v2
-with:
-  cf_api: ${{ secrets.CF_API }}
-  cf_username: ${{ secrets.CF_USERNAME }}
-  cf_password: ${{ secrets.CF_PASSWORD }}
-  cf_org: ${{ secrets.CF_ORG }}
-  cf_space: ${{ secrets.CF_SPACE }}
-  
+
 on:
   push:
     branches:
@@ -19,30 +12,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Node.js
+      - name: Install Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: Install dependencies and build frontend
+      - name: Build frontend
         run: |
           npm install
           npm run build
 
-      - name: Install Cloud Foundry CLI
-        run: |
-          wget -q -O cf-cli.deb https://packages.cloudfoundry.org/stable?release=debian64&source=github
-          sudo dpkg -i cf-cli.deb
-          cf --version
-
-      - name: Log in to Cloud Foundry
-        run: |
-          cf login -a ${{ secrets.CF_API }} \
-            -u ${{ secrets.CF_USERNAME }} \
-            -p ${{ secrets.CF_PASSWORD }} \
-            -o ${{ secrets.CF_ORG }} \
-            -s ${{ secrets.CF_SPACE }}
-
-      - name: Deploy app to Cloud Foundry
-        run: |
-          cf push
+      - name: Deploy to Cloud Foundry
+        uses: citizen-of-planet-earth/cf-cli-action@v2
+        with:
+          cf_api: ${{ secrets.CF_API }}
+          cf_username: ${{ secrets.CF_USERNAME }}
+          cf_password: ${{ secrets.CF_PASSWORD }}
+          cf_org: ${{ secrets.CF_ORG }}
+          cf_space: ${{ secrets.CF_SPACE }}
+          command: push

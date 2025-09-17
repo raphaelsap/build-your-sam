@@ -8,6 +8,7 @@ import { config } from './config.js';
 import { fetchCompanySolutions } from './services/solutionService.js';
 import { generateAgentConcept } from './services/agentService.js';
 import { discoverCustomerPriorities } from './services/priorityService.js';
+import { fetchEnterpriseContext } from './services/contextService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,18 +29,20 @@ app.get('/api/solutions', async (req, res) => {
       return res.status(400).json({ error: 'Query parameter "company" is required.' });
     }
 
-    const [solutions, priorities] = await Promise.all([
+    const [solutions, priorities, context] = await Promise.all([
       fetchCompanySolutions(company),
       discoverCustomerPriorities(company),
+      fetchEnterpriseContext(company),
     ]);
 
     res.json({
       company: company.trim(),
       solutions,
       priorities,
+      context,
     });
   } catch (error) {
-    console.error('Error fetching solutions or priorities:', error);
+    console.error('Error fetching solutions or context:', error);
     res.status(500).json({ error: error.message || 'Failed to fetch solutions.' });
   }
 });
