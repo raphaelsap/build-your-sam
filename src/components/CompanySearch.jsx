@@ -5,7 +5,7 @@ function CompanySearch({ company, priorities, onCompanyChange, onPrioritiesChang
       className="w-full flex flex-col gap-4"
     >
       <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-        Please enter the name of your organization
+        Organization to analyse
       </label>
       <div className="flex flex-col sm:flex-row gap-3">
         <input
@@ -20,22 +20,22 @@ function CompanySearch({ company, priorities, onCompanyChange, onPrioritiesChang
           className="px-6 py-4 rounded-2xl text-white font-semibold bg-gradient-to-r from-solaceGreen to-[#0DAE74] shadow-lg hover:shadow-xl transition"
           disabled={isLoading}
         >
-          {isLoading ? 'Discovering...' : 'Visualize Mesh'}
+          {isLoading ? 'Preparing...' : 'Generate Mesh Overview'}
         </button>
       </div>
 
       <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-        Your priorities for this year (auto-discovered, editable)
+        Regional priorities for the next 12 months
       </label>
       <textarea
         className="min-h-[110px] rounded-2xl border border-gray-200 px-5 py-4 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-solaceGreen/70 focus:border-transparent shadow-sm transition"
         value={priorities}
         onChange={(event) => onPrioritiesChange(event.target.value)}
-        placeholder="We will attempt to pre-populate this from Perplexity. You can refine as needed."
+        placeholder="We will populate regional goals automatically. Refine them as needed."
       />
 
       <p className="text-sm text-gray-500">
-        We surface executive priorities with Perplexity AI, so every agent pitch aligns with what matters most right now.
+        Solace Agent Mesh uses these priorities to recommend the integrations that deliver the highest strategic impact for your region.
       </p>
     </form>
   );

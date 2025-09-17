@@ -335,7 +335,7 @@ function App() {
       const priorityNote = hasPriorities
         ? ' We will tailor agents to your stated priorities.'
         : '';
-      return `We discovered ${solutions.length} connected platforms for ${activeCompany}. Drag across any 2-3 to see Solace Agents emerge.${priorityNote}`;
+      return `Solace identified ${solutions.length} strategic platforms for ${activeCompany}. Drag across any two or three nodes to see orchestrated agents generated${priorityNote}.`;
     }
     return 'Visualize how Solace Agents weave your enterprise systems together.';
   }, [loadingSolutions, isReviewing, solutions.length, activeCompany, hasPriorities]);
@@ -384,8 +384,8 @@ function App() {
       valueLevers.push('Faster cross-platform orchestration', 'Improved decision latency');
     }
 
-    const baseScore = totalAgents * 14 + uniqueSolutions * 6 + (enterpriseContext.priorityHeatmap?.length || 0) * 5;
-    const meshScore = Math.max(5, Math.min(100, Math.round(baseScore)));
+    const baseScore = Math.min(100, (totalAgents / 10) * 100);
+    const meshScore = Math.max(5, Math.round(baseScore));
 
     return {
       totalAgents,
@@ -612,7 +612,7 @@ function App() {
                 className="w-full rounded-3xl border border-solaceGreen/25 bg-white/85 p-4 shadow-mesh backdrop-blur"
               >
                 <div className="mb-4 rounded-2xl border border-solaceGreen/30 bg-solaceGreen/10 px-4 py-3 text-sm text-gray-700">
-                  <strong className="text-solaceGreen">Solace orchestrates the mesh.</strong> Each platform keeps its native agents while Solace weaves them together for enterprise choreography.
+                  <strong className="text-solaceGreen">Solace orchestrates your digital nerve centre.</strong> Vendor agents continue to run locally while Solace synchronises their events in real time.
                 </div>
                 {(enterpriseContext.synergyInsights?.length || enterpriseContext.industryComparisons?.length) && (
                   <div className="mb-4 grid gap-4 md:grid-cols-2">
@@ -666,7 +666,7 @@ function App() {
                               ))
                           ) : (
                             <div className="rounded-xl border border-dashed border-solaceGreen/40 bg-solaceGreen/5 p-4 text-sm text-gray-500">
-                              Connect two solutions to mint your first agent.
+                              Drag 2–3 platforms in the mesh to request your first joint agent.
                             </div>
                           )}
                         </div>
@@ -686,7 +686,7 @@ function App() {
                       />
                     </div>
                     <p className="mt-6 text-center text-sm text-gray-500">
-                      Connect nodes to co-create agents and watch their event paths pulse across the mesh.
+                      Drag across two or three platforms to commission a new collaborative agent. Event pulses show how Solace keeps them aligned.
                     </p>
                   </div>
                 </div>
@@ -699,7 +699,7 @@ function App() {
                 transition={{ duration: 0.5, ease: 'easeOut' }}
                 className="rounded-3xl border border-dashed border-solaceGreen/30 bg-white/70 px-6 py-16 text-center text-gray-500 backdrop-blur"
               >
-                <p>Enter a company to surface its enterprise mesh and the priorities Solace Agents will amplify.</p>
+                <p>Enter an organization to map its enterprise platforms, regional priorities, and Solace-ready integration opportunities.</p>
               </motion.div>
             )}
 
@@ -754,7 +754,7 @@ function App() {
                   className="rounded-2xl border border-solaceGreen px-5 py-3 text-sm font-semibold text-solaceGreen hover:bg-solaceGreen hover:text-white transition"
                   onClick={handleExportAnalysis}
                 >
-                  Export Mesh Analysis (PDF)
+                  Download Mesh Briefing (PDF)
                 </button>
               </div>
             )}
@@ -763,7 +763,7 @@ function App() {
 
         <footer className="px-4 pb-12 sm:px-6">
           <BottomPanel />
-          <p className="mt-6 text-xs text-gray-400 text-center">Developed by the Solace Agent Mesh demo team.</p>
+          <p className="mt-6 text-xs text-gray-400 text-center">Generated with Solace Agent Mesh.</p>
         </footer>
       </div>
     </div>

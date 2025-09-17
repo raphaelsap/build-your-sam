@@ -20,14 +20,15 @@ function makePairKey(a, b) {
   return canonicalizePair(`${a} + ${b}`);
 }
 
-function computePositions(solutions, { width, height }) {
+function computePositions(solutions, { width, height }, radiusOverride) {
   if (!solutions.length) {
     return [];
   }
 
   const safeWidth = Math.max(width, 320);
   const safeHeight = Math.max(height, 320);
-  const radius = Math.min(safeWidth, safeHeight) / 2 - NODE_RADIUS * 1.65;
+  const defaultRadius = Math.min(safeWidth, safeHeight) / 2 - NODE_RADIUS * 1.65;
+  const radius = typeof radiusOverride === 'number' ? radiusOverride : defaultRadius;
   const centerX = safeWidth / 2;
   const centerY = safeHeight / 2;
 
@@ -100,9 +101,19 @@ function SolutionGraph({ solutions, agents = [], heatmap = [], onSelectionComple
   const [pointer, setPointer] = useState(null);
   const autoSeededRef = useRef(false);
 
+  const meshCenter = useMemo(
+    () => ({ x: dimensions.width / 2, y: dimensions.height / 2 }),
+    [dimensions],
+  );
+
+  const outerRadius = useMemo(() => {
+    const candidate = Math.min(dimensions.width, dimensions.height) / 2 - NODE_RADIUS * 2.1;
+    return Math.max(candidate, NODE_RADIUS * 4.2);
+  }, [dimensions]);
+
   const positions = useMemo(
-    () => computePositions(solutions, dimensions),
-    [solutions, dimensions],
+    () => computePositions(solutions, dimensions, outerRadius),
+    [solutions, dimensions, outerRadius],
   );
   const positionMap = useMemo(() => {
     const map = new Map();
@@ -122,8 +133,11 @@ function SolutionGraph({ solutions, agents = [], heatmap = [], onSelectionComple
     if (!agents.length || !positionMap.size) {
       return [];
     }
-    const center = { x: dimensions.width / 2, y: dimensions.height / 2 };
-    const baseNodes = agents
+
+    const innerRadius = Math.max(outerRadius * 0.55, NODE_RADIUS * 3.5);
+    const total = Math.max(agents.length, 1);
+
+    return agents
       .filter((agent) => Array.isArray(agent.solutions) && agent.solutions.length)
       .map((agent, index) => {
         const anchors = agent.solutions
@@ -132,62 +146,19 @@ function SolutionGraph({ solutions, agents = [], heatmap = [], onSelectionComple
         if (!anchors.length) {
           return null;
         }
-        const { x, y } = anchors.reduce(
-          (acc, point) => ({
-            x: acc.x + point.x,
-            y: acc.y + point.y,
-          }),
-          { x: 0, y: 0 },
-        );
+        const angle = (2 * Math.PI * index) / total - Math.PI / 2;
+        const x = meshCenter.x + innerRadius * Math.cos(angle);
+        const y = meshCenter.y + innerRadius * Math.sin(angle);
         return {
           id: agent.id,
           agent,
-          x: x / anchors.length,
-          y: y / anchors.length,
-          index,
+          x,
+          y,
+          anchors,
         };
       })
       .filter(Boolean);
-
-    const adjusted = baseNodes.map((node) => (node ? { ...node } : null));
-    const minRadiusFromCenter = NODE_RADIUS * 2 + 40;
-    const minAgentSpacing = NODE_RADIUS * 2 + 36;
-
-    for (let i = 0; i < adjusted.length; i += 1) {
-      const node = adjusted[i];
-      if (!node) continue;
-
-      let dx = node.x - center.x;
-      let dy = node.y - center.y;
-      let distance = Math.hypot(dx, dy);
-      if (distance < minRadiusFromCenter) {
-        const scale = (minRadiusFromCenter + i * 6) / (distance || 1);
-        dx *= scale;
-        dy *= scale;
-        node.x = center.x + dx;
-        node.y = center.y + dy;
-      }
-
-      for (let j = 0; j < i; j += 1) {
-        const other = adjusted[j];
-        if (!other) continue;
-        let diffX = node.x - other.x;
-        let diffY = node.y - other.y;
-        let dist = Math.hypot(diffX, diffY);
-        if (dist < minAgentSpacing) {
-          const push = (minAgentSpacing - dist) / (dist || 1) * 0.5;
-          diffX *= push;
-          diffY *= push;
-          node.x += diffX;
-          node.y += diffY;
-          other.x -= diffX;
-          other.y -= diffY;
-        }
-      }
-    }
-
-    return adjusted.filter(Boolean);
-  }, [agents, positionMap, dimensions]);
+  }, [agents, positionMap, meshCenter, outerRadius]);
   const heatmapMap = useMemo(() => {
     const map = new Map();
     (heatmap || []).forEach((entry) => {
@@ -328,11 +299,6 @@ function SolutionGraph({ solutions, agents = [], heatmap = [], onSelectionComple
     return lineGenerator(pathPoints);
   }, [dragState, pointer, positionMap, lineGenerator]);
 
-  const meshCenter = useMemo(
-    () => ({ x: dimensions.width / 2, y: dimensions.height / 2 }),
-    [dimensions],
-  );
-
   return (
     <div
       ref={containerRef}
@@ -442,10 +408,7 @@ function SolutionGraph({ solutions, agents = [], heatmap = [], onSelectionComple
         </AnimatePresence>
 
         {agentNodes.map((node) =>
-          node.agent.solutions
-            .map((name) => positionMap.get(name))
-            .filter(Boolean)
-            .map((target, idx) => {
+          node.anchors.map((target, idx) => {
               const { d, points } = buildPath(lineGenerator, node, target, dimensions.width, dimensions.height);
               const keyframesX = points.map((point) => point[0]);
               const keyframesY = points.map((point) => point[1]);

@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 
-function LoadingOverlay({ isVisible, message = 'Weaving the Solace mesh...' }) {
+function LoadingOverlay({ isVisible, message = 'Analysing your digital estate...' }) {
   return (
     <AnimatePresence>
       {isVisible && (

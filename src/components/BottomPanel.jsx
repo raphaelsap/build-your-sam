@@ -3,9 +3,9 @@ function BottomPanel() {
     <div className="mt-10 w-full">
       <div className="max-w-5xl mx-auto bg-white/80 backdrop-blur border border-solaceGreen/30 rounded-3xl px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-mesh">
         <div>
-          <h4 className="text-lg font-semibold text-solaceGreen">Ready to orchestrate your own mesh?</h4>
+          <h4 className="text-lg font-semibold text-solaceGreen">Extend this blueprint inside your enterprise</h4>
           <p className="text-sm text-gray-600 mt-1">
-            Solace Agent Mesh connects your mission-critical systems with real-time event streaming.
+            Solace Agent Mesh delivers governed, event-driven automation across every platform in your estate.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">

@@ -44,10 +44,10 @@ function SolutionReviewPanel({
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2 text-center">
           <h2 className="text-2xl font-semibold text-solaceGreen">
-            Validate {company ? `${company}'s` : 'your'} enterprise mesh
+            Curate {company ? `${company}'s` : 'your'} integration estate
           </h2>
           <p className="text-sm text-gray-600">
-            Toggle the platforms you want to visualise, tweak names, or add new ones (maximum of 10).
+            Select at least five enterprise platforms Solace Agent Mesh should orchestrate. You can adjust names or reference logos before visualising the mesh.
           </p>
         </div>
 
