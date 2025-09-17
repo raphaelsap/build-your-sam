@@ -15,7 +15,7 @@ function SolutionReviewPanel({
   const [newSolution, setNewSolution] = useState({ name: '', logoUrl: '' });
   const selectionCount = selectedIds.length;
   const canAddMore = solutions.length < 10;
-  const canConfirm = selectionCount >= 2 && selectionCount <= 10;
+  const canConfirm = selectionCount >= 5 && selectionCount <= 10;
 
   const helperText = useMemo(() => {
     if (selectionCount < 5) return `Select at least five platforms (currently ${selectionCount}).`;

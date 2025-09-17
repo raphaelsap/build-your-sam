@@ -6,6 +6,20 @@ const NODE_RADIUS = 48;
 const EDGE_DELAY_MS = 1200;
 const AGENT_DELAY_MS = 4000;
 
+function canonicalizePair(pair) {
+  if (!pair) return '';
+  return pair
+    .split(/\+|&|→|->|—|–/g)
+    .map((segment) => segment.replace(/[^a-z0-9\s]/gi, '').trim().toLowerCase())
+    .filter(Boolean)
+    .sort()
+    .join('|');
+}
+
+function makePairKey(a, b) {
+  return canonicalizePair(`${a} + ${b}`);
+}
+
 function computePositions(solutions, { width, height }) {
   if (!solutions.length) {
     return [];
@@ -77,7 +91,7 @@ function buildPath(lineGen, a, b, width, height) {
   };
 }
 
-function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGenerate, className = '' }) {
+function SolutionGraph({ solutions, agents = [], heatmap = [], onSelectionComplete, onAutoGenerate, className = '' }) {
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 960, height: 600 });
   const [connections, setConnections] = useState([]);
@@ -108,7 +122,8 @@ function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGene
     if (!agents.length || !positionMap.size) {
       return [];
     }
-    return agents
+    const center = { x: dimensions.width / 2, y: dimensions.height / 2 };
+    const baseNodes = agents
       .filter((agent) => Array.isArray(agent.solutions) && agent.solutions.length)
       .map((agent, index) => {
         const anchors = agent.solutions
@@ -133,7 +148,60 @@ function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGene
         };
       })
       .filter(Boolean);
-  }, [agents, positionMap]);
+
+    const adjusted = baseNodes.map((node) => (node ? { ...node } : null));
+    const minRadiusFromCenter = NODE_RADIUS * 2 + 40;
+    const minAgentSpacing = NODE_RADIUS * 2 + 36;
+
+    for (let i = 0; i < adjusted.length; i += 1) {
+      const node = adjusted[i];
+      if (!node) continue;
+
+      let dx = node.x - center.x;
+      let dy = node.y - center.y;
+      let distance = Math.hypot(dx, dy);
+      if (distance < minRadiusFromCenter) {
+        const scale = (minRadiusFromCenter + i * 6) / (distance || 1);
+        dx *= scale;
+        dy *= scale;
+        node.x = center.x + dx;
+        node.y = center.y + dy;
+      }
+
+      for (let j = 0; j < i; j += 1) {
+        const other = adjusted[j];
+        if (!other) continue;
+        let diffX = node.x - other.x;
+        let diffY = node.y - other.y;
+        let dist = Math.hypot(diffX, diffY);
+        if (dist < minAgentSpacing) {
+          const push = (minAgentSpacing - dist) / (dist || 1) * 0.5;
+          diffX *= push;
+          diffY *= push;
+          node.x += diffX;
+          node.y += diffY;
+          other.x -= diffX;
+          other.y -= diffY;
+        }
+      }
+    }
+
+    return adjusted.filter(Boolean);
+  }, [agents, positionMap, dimensions]);
+  const heatmapMap = useMemo(() => {
+    const map = new Map();
+    (heatmap || []).forEach((entry) => {
+      const key = canonicalizePair(entry?.pair);
+      if (!key) return;
+      const value = Number.isFinite(entry?.value) ? Math.max(0, Math.min(100, Number(entry.value))) : 0;
+      map.set(key, {
+        value,
+        rationale: typeof entry?.rationale === 'string' ? entry.rationale : '',
+      });
+    });
+    return map;
+  }, [heatmap]);
+
 
   useEffect(() => {
     if (!containerRef.current) return undefined;
@@ -280,6 +348,13 @@ function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGene
             <stop offset="0%" stopColor="#CFF6E7" stopOpacity="0.75" />
             <stop offset="80%" stopColor="#F0FFFA" stopOpacity="0" />
           </radialGradient>
+          <filter id="glow-purple" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="6" result="coloredBlur" />
+            <feMerge>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
           {positions.map((pos, idx) => (
             <clipPath key={`clip-${idx}`} id={`clip-${idx}`}>
               <circle cx={pos.x} cy={pos.y} r={NODE_RADIUS - 5} />
@@ -329,24 +404,37 @@ function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGene
               const a = positionMap.get(edge.nodes[0]);
               const b = positionMap.get(edge.nodes[1]);
               if (!a || !b) return null;
+              const pairKey = makePairKey(edge.nodes[0], edge.nodes[1]);
+              const heatEntry = heatmapMap.get(pairKey);
+              const intensity = heatEntry ? Math.max(0.2, Math.min(1, heatEntry.value / 100)) : 0.4;
               const { d, points } = buildPath(lineGenerator, a, b, dimensions.width, dimensions.height);
               const keyframesX = points.map((point) => point[0]);
               const keyframesY = points.map((point) => point[1]);
+              const baseDuration = 3.6 - intensity * 1.6;
               return (
                 <g key={edge.id}>
                   <path
                     d={d}
                     stroke="#08C68B"
-                    strokeWidth={2.6}
-                    strokeOpacity={0.55}
+                    strokeWidth={2.6 + intensity * 1.4}
+                    strokeOpacity={0.35 + intensity * 0.45}
                     strokeLinecap="round"
                     fill="none"
+                  />
+                  <path
+                    d={d}
+                    stroke="#6A0DAD"
+                    strokeWidth={3.4 + intensity * 2}
+                    strokeOpacity={0.18 + intensity * 0.2}
+                    strokeLinecap="round"
+                    fill="none"
+                    filter="url(#glow-purple)"
                   />
                   <motion.circle
                     r={3}
                     fill="#056E3E"
                     animate={{ cx: keyframesX, cy: keyframesY }}
-                    transition={{ duration: 3.2, ease: 'linear', repeat: Infinity }}
+                    transition={{ duration: baseDuration, ease: 'linear', repeat: Infinity }}
                   />
                 </g>
               );
@@ -400,7 +488,7 @@ function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGene
                 <g key={`${source.id}-${target.id}-agent-link`}>
                   <path
                     d={d}
-                    stroke="#0F8F58"
+                    stroke="#0A6B3D"
                     strokeWidth={1.2}
                     strokeOpacity={0.55}
                     fill="none"
@@ -450,29 +538,18 @@ function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGene
                   strokeWidth={isSelected ? 5 : 3}
                   style={{ filter: 'drop-shadow(0 14px 40px rgba(8, 198, 139, 0.18))' }}
                 />
-                {solution.logoUrl ? (
-                  <image
-                    href={solution.logoUrl}
-                    x={x - NODE_RADIUS}
-                    y={y - NODE_RADIUS}
-                    width={NODE_RADIUS * 2}
-                    height={NODE_RADIUS * 2}
+               {solution.logoUrl ? (
+                 <image
+                   href={solution.logoUrl}
+                    x={x - NODE_RADIUS * 0.7}
+                    y={y - NODE_RADIUS * 0.7}
+                    width={NODE_RADIUS * 1.4}
+                    height={NODE_RADIUS * 1.4}
                     preserveAspectRatio="xMidYMid meet"
                     clipPath={`url(#clip-${index})`}
                     style={{ pointerEvents: 'none' }}
                   />
                 ) : null}
-                <text
-                  x={x}
-                  y={y}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fontSize="18"
-                  fontWeight="700"
-                  fill="#1F2933"
-                >
-                  {solution.logoUrl ? '' : solution.name.slice(0, 3).toUpperCase()}
-                </text>
                 <text
                   x={x}
                   y={y + NODE_RADIUS + 20}

@@ -28,6 +28,32 @@ const LOGO_MAP = {
   'google cloud': 'https://cdn.simpleicons.org/googlecloud/4285F4',
 };
 
+const LOGO_ALIASES = {
+  'sap s4hana': 'sap',
+  'sap hana': 'sap',
+  'sap cloud platform': 'sap',
+  'sap erp': 'sap',
+  'sap ecc': 'sap',
+  'salesforce service cloud': 'salesforce',
+  'salesforce marketing cloud': 'salesforce',
+  'salesforce commerce cloud': 'salesforce',
+  'salesforce crm': 'salesforce',
+  'servicenow itsm': 'servicenow',
+  'service now': 'servicenow',
+  'microsoft dynamics 365': 'dynamics',
+  'dynamics 365': 'dynamics',
+  'google workspace': 'google cloud',
+  'google cloud platform': 'google cloud',
+  'jira service management': 'jira',
+  'atlassian jira': 'jira',
+  'slack enterprise': 'slack',
+  'oracle fusion': 'oracle',
+  'oracle cloud': 'oracle',
+  'workday hcm': 'workday',
+};
+
+
+
 const VENDOR_AGENT_TEMPLATES = [
   {
     vendor: 'SAP',
@@ -70,8 +96,17 @@ function toTitleCase(value = '') {
 function getLogoUrl(name, existingUrl) {
   const trimmed = (name || '').trim();
   if (!trimmed) return existingUrl?.trim() || null;
-  const key = trimmed.toLowerCase();
-  return existingUrl?.trim() || LOGO_MAP[key] || null;
+  if (existingUrl?.trim()) return existingUrl.trim();
+  const normalized = trimmed.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+  const aliasKey = LOGO_ALIASES[normalized] || normalized;
+  if (LOGO_MAP[aliasKey]) {
+    return LOGO_MAP[aliasKey];
+  }
+  const condensed = aliasKey.replace(/\s+/g, '');
+  if (LOGO_MAP[condensed]) {
+    return LOGO_MAP[condensed];
+  }
+  return null;
 }
 
 function buildVendorAgents(solutions) {
@@ -115,6 +150,11 @@ function App() {
   const [candidateSolutions, setCandidateSolutions] = useState([]);
   const [selectedSolutionIds, setSelectedSolutionIds] = useState([]);
   const [isReviewing, setIsReviewing] = useState(false);
+  const [enterpriseContext, setEnterpriseContext] = useState({
+    synergyInsights: [],
+    industryComparisons: [],
+    priorityHeatmap: [],
+  });
 
   const resetExperience = useCallback(() => {
     setAgents([]);
@@ -125,6 +165,7 @@ function App() {
     setIsReviewing(false);
     setCustomerPriorities('');
     setDiscoveredPriorities({ summary: '', items: [] });
+    setEnterpriseContext({ synergyInsights: [], industryComparisons: [], priorityHeatmap: [] });
   }, []);
 
   const handleFetchSolutions = useCallback(
@@ -173,6 +214,7 @@ function App() {
         setActiveCompany(normalizedCompany);
         setDiscoveredPriorities({ summary: prioritySummary, items: rawPriorityItems });
         setCustomerPriorities(normalizedPriorities);
+        setEnterpriseContext(payload.context || { synergyInsights: [], industryComparisons: [], priorityHeatmap: [] });
         setIsReviewing(true);
       } catch (err) {
         setSolutions([]);
@@ -316,6 +358,7 @@ function App() {
     const confirmedAgents = agents.filter((agent) => !agent.isPending);
     const totalAgents = confirmedAgents.length;
     const totalMessages = totalAgents * MESSAGES_PER_AGENT;
+    const uniqueSolutions = new Set(confirmedAgents.flatMap((agent) => agent.solutions)).size;
 
     const qualitativeBenefits = confirmedAgents
       .map((agent) => agent.description)
@@ -341,13 +384,89 @@ function App() {
       valueLevers.push('Faster cross-platform orchestration', 'Improved decision latency');
     }
 
+    const baseScore = totalAgents * 14 + uniqueSolutions * 6 + (enterpriseContext.priorityHeatmap?.length || 0) * 5;
+    const meshScore = Math.max(5, Math.min(100, Math.round(baseScore)));
+
     return {
       totalAgents,
       formattedMessages: formatNumber(totalMessages),
       valueLevers,
       qualitativeBenefits,
+      meshScore,
     };
-  }, [agents]);
+  }, [agents, enterpriseContext]);
+
+  const handleExportAnalysis = useCallback(async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const title = activeCompany ? `Solace Agent Mesh Analysis for ${activeCompany}` : 'Solace Agent Mesh Analysis';
+
+    const sections = [];
+    sections.push(`# ${title}`);
+    if (customerPriorities.trim()) {
+      sections.push('## Regional Priorities');
+      sections.push(customerPriorities.trim());
+    }
+    if (enterpriseContext.synergyInsights?.length) {
+      sections.push('## Synergy Agents to Spotlight');
+      enterpriseContext.synergyInsights.forEach((item) => sections.push(`- ${item}`));
+    }
+    if (enterpriseContext.industryComparisons?.length) {
+      sections.push('## Industry Benchmarks');
+      enterpriseContext.industryComparisons.forEach((item) => sections.push(`- ${item}`));
+    }
+    if (enterpriseContext.priorityHeatmap?.length) {
+      sections.push('## Priority Heatmap (Strategic Impact)');
+      enterpriseContext.priorityHeatmap.forEach((entry) => {
+        sections.push(`- ${entry.pair}: ${entry.value}/100 — ${entry.rationale}`);
+      });
+    }
+    if (solutions.length) {
+      sections.push('## Connected Platforms');
+      solutions.forEach((solution) => sections.push(`- ${solution.name}`));
+    }
+    if (agents.length) {
+      sections.push('## Agents in Focus');
+      agents.forEach((agent) => {
+        sections.push(`- ${agent.agentName}: ${agent.description}`);
+      });
+    }
+    sections.push('## Mesh Metrics');
+    sections.push(`- Mesh Maturity Score: ${metrics.meshScore}`);
+    sections.push(`- Estimated Event Throughput: ${metrics.formattedMessages} messages/year`);
+    if (metrics.valueLevers.length) {
+      sections.push(`- Value Levers: ${metrics.valueLevers.join(', ')}`);
+    }
+    if (metrics.qualitativeBenefits.length) {
+      sections.push('## Business Benefits');
+      metrics.qualitativeBenefits.forEach((benefit) => sections.push(`- ${benefit}`));
+    }
+    sections.push('---');
+    sections.push('Developed by the Solace Agent Mesh demo team.');
+
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(12);
+    const maxWidth = 500;
+    let cursorY = 60;
+
+    sections.forEach((section) => {
+      const textLines = doc.splitTextToSize(section, maxWidth);
+      textLines.forEach((line) => {
+        if (cursorY > 780) {
+          doc.addPage();
+          cursorY = 60;
+        }
+        doc.text(line, 50, cursorY);
+        cursorY += 18;
+      });
+      cursorY += 6;
+    });
+
+    const fileName = activeCompany
+      ? `solace-agent-mesh-${activeCompany.replace(/\s+/g, '-').toLowerCase()}.pdf`
+      : 'solace-agent-mesh-analysis.pdf';
+    doc.save(fileName);
+  }, [activeCompany, customerPriorities, enterpriseContext, solutions, agents, metrics.meshScore, metrics.formattedMessages, metrics.valueLevers, metrics.qualitativeBenefits]);
 
   const handleToggleSelection = useCallback((id) => {
     setSelectedSolutionIds((prev) => {
@@ -427,7 +546,7 @@ function App() {
       <BackgroundMesh />
       <LoadingOverlay
         isVisible={loadingSolutions}
-        message="Discovering enterprise platforms and priority themes via Perplexity."
+        message="Discovering enterprise platforms and priorities with Perplexity."
       />
       <div className="relative z-10 flex min-h-screen flex-col">
         <header className="pt-12 pb-6">
@@ -495,8 +614,38 @@ function App() {
                 <div className="mb-4 rounded-2xl border border-solaceGreen/30 bg-solaceGreen/10 px-4 py-3 text-sm text-gray-700">
                   <strong className="text-solaceGreen">Solace orchestrates the mesh.</strong> Each platform keeps its native agents while Solace weaves them together for enterprise choreography.
                 </div>
+                {(enterpriseContext.synergyInsights?.length || enterpriseContext.industryComparisons?.length) && (
+                  <div className="mb-4 grid gap-4 md:grid-cols-2">
+                    {enterpriseContext.synergyInsights?.length ? (
+                      <div className="rounded-2xl border border-solaceGreen/20 bg-white/90 p-4 shadow-sm">
+                        <h3 className="text-sm font-semibold text-solaceGreen">Synergy Agents to Spotlight</h3>
+                        <ul className="mt-2 space-y-1 text-sm text-gray-600">
+                          {enterpriseContext.synergyInsights.map((item, index) => (
+                            <li key={`synergy-${index}`} className="flex items-start gap-2">
+                              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-solaceGreen" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {enterpriseContext.industryComparisons?.length ? (
+                      <div className="rounded-2xl border border-solaceGreen/20 bg-white/90 p-4 shadow-sm">
+                        <h3 className="text-sm font-semibold text-solaceGreen">Industry Benchmarks</h3>
+                        <ul className="mt-2 space-y-1 text-sm text-gray-600">
+                          {enterpriseContext.industryComparisons.map((item, index) => (
+                            <li key={`benchmark-${index}`} className="flex items-start gap-2">
+                              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-solaceGreen" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
-                  <aside className="w-full lg:w-[28rem]">
+                  <aside className="w-full lg:w-1/3">
                     <div className="flex h-full flex-col rounded-2xl border border-solaceGreen/30 bg-white/95 p-4 shadow-sm">
                       <div className="flex items-center justify-between gap-3">
                         <h2 className="text-lg font-semibold text-solaceGreen">Agents in Focus</h2>
@@ -525,11 +674,12 @@ function App() {
                     </div>
                   </aside>
 
-                  <div className="relative flex-1">
+                  <div className="relative flex-1 lg:min-h-[80vh]">
                     <div className="relative h-[65vh] min-h-[420px] w-full rounded-3xl bg-white/92 p-4">
                       <SolutionGraph
                         solutions={solutions}
                         agents={agents.slice(-MAX_AGENTS)}
+                        heatmap={enterpriseContext.priorityHeatmap || []}
                         onSelectionComplete={handleGenerateAgent}
                         onAutoGenerate={handleAutoGenerate}
                         className="rounded-3xl"
@@ -555,9 +705,14 @@ function App() {
 
             {solutions.length > 0 && (
               <div className="w-full rounded-3xl border border-solaceGreen/20 bg-white/90 px-6 py-5 shadow-sm">
-                <div className="grid gap-6 md:grid-cols-3">
+                <div className="grid gap-6 md:grid-cols-4">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-gray-500">Estimated Event Throughput</p>
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Mesh Maturity Score</p>
+                    <p className="mt-1 text-3xl font-semibold text-solaceGreen">{metrics.meshScore}</p>
+                    <p className="text-xs text-gray-500">Higher scores indicate richer cross-agent collaboration.</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Event Throughput</p>
                     <p className="mt-1 text-2xl font-semibold text-solaceGreen">
                       {metrics.formattedMessages} messages/year
                     </p>
@@ -592,11 +747,23 @@ function App() {
                 </div>
               </div>
             )}
+            {solutions.length > 0 && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="rounded-2xl border border-solaceGreen px-5 py-3 text-sm font-semibold text-solaceGreen hover:bg-solaceGreen hover:text-white transition"
+                  onClick={handleExportAnalysis}
+                >
+                  Export Mesh Analysis (PDF)
+                </button>
+              </div>
+            )}
           </div>
         </main>
 
         <footer className="px-4 pb-12 sm:px-6">
           <BottomPanel />
+          <p className="mt-6 text-xs text-gray-400 text-center">Developed by the Solace Agent Mesh demo team.</p>
         </footer>
       </div>
     </div>

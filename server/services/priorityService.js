@@ -13,7 +13,7 @@ export async function discoverCustomerPriorities(companyName) {
     { role: 'system', content: PRIORITY_SYSTEM_PROMPT },
     {
       role: 'user',
-      content: `For ${cleanName}, outline the top three executive priorities for the next 12 months that would motivate investment in connected digital operations. Return JSON with the shape { "priorities": string[<=3], "summary": string (<=80 words) }. Focus on measurable imperatives (e.g., latency reduction, margin protection, customer experience) and avoid generic statements.`,
+      content: `For ${cleanName}, outline the top three executive priorities for the next 12 months that would motivate investment in connected digital operations. These priorities must be regionalised—clearly state the region (EMEA, Americas, APAC, etc.) or key markets they relate to. Return JSON with the shape { "priorities": string[<=3], "summary": string (<=80 words) }. Focus on measurable imperatives (e.g., latency reduction, margin protection, customer experience) and avoid generic statements.`,
     },
   ];
 

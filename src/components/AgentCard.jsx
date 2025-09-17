@@ -45,28 +45,24 @@ function AgentCard({ agent, isGenerating }) {
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-semibold text-solacePurple truncate">
+              <h3 className="text-base font-semibold text-gray-900 truncate">
                 {agent.agentName}
               </h3>
               {isGenerating && (
-                <span className="text-xs text-solaceBlue animate-pulse">Drafting...</span>
+                <span className="text-xs text-gray-900 animate-pulse">Drafting...</span>
               )}
             </div>
-            <p className="text-sm text-gray-600 mt-1">{agent.description}</p>
-            <p className="text-xs text-gray-400 mt-2 uppercase tracking-wide">
+            <p className="text-sm text-gray-900 mt-1">{agent.description}</p>
+            <p className="text-xs text-gray-500 mt-2 uppercase tracking-wide">
               {agent.solutions.join(' • ')}
             </p>
           </div>
-        </div>
-        <div className="flex items-center justify-between rounded-xl bg-solaceGreen/10 px-3 py-2 text-sm font-medium text-solaceGreen">
-          <span>Potential ROI (12m)</span>
-          <span className="text-right font-semibold">{agent.roiEstimate || 'Estimating...'}</span>
         </div>
       </div>
       <div className="border-t border-gray-100">
         <button
           type="button"
-          className="w-full flex items-center justify-between px-4 py-2 text-sm font-semibold text-solaceBlue hover:text-solacePurple transition"
+          className="w-full flex items-center justify-between px-4 py-2 text-sm font-semibold text-gray-900 hover:text-black transition"
           onClick={() => setIsExpanded((prev) => !prev)}
         >
           {isExpanded ? 'Hide Agent Prompt' : 'Show Agent Prompt'}
@@ -79,7 +75,7 @@ function AgentCard({ agent, isGenerating }) {
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="px-4 pb-4 text-sm text-gray-700 whitespace-pre-line"
+              className="px-4 pb-4 text-sm text-gray-900 whitespace-pre-line"
             >
               {agent.draftPrompt}
             </motion.div>
