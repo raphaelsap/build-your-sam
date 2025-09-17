@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as d3 from 'd3';
 
 const NODE_RADIUS = 48;
-const EDGE_DELAY_MS = 2000;
-const AGENT_DELAY_MS = 5000;
+const EDGE_DELAY_MS = 1200;
+const AGENT_DELAY_MS = 4000;
 
 function computePositions(solutions, { width, height }) {
   if (!solutions.length) {
@@ -13,7 +13,7 @@ function computePositions(solutions, { width, height }) {
 
   const safeWidth = Math.max(width, 320);
   const safeHeight = Math.max(height, 320);
-  const radius = Math.min(safeWidth, safeHeight) / 2 - NODE_RADIUS * 1.6;
+  const radius = Math.min(safeWidth, safeHeight) / 2 - NODE_RADIUS * 1.65;
   const centerX = safeWidth / 2;
   const centerY = safeHeight / 2;
 
@@ -30,25 +30,32 @@ function computePositions(solutions, { width, height }) {
   });
 }
 
-function buildConnections(solutions) {
-  if (solutions.length < 2) {
+function buildStableConnections(solutions) {
+  const count = solutions.length;
+  if (count < 2) {
     return [];
   }
 
-  const indices = d3.shuffle(d3.range(solutions.length));
-  const candidates = [];
-  for (let i = 0; i < indices.length; i += 1) {
-    const nextIndex = (i + 1) % indices.length;
-    if (nextIndex === i) continue;
-    const source = solutions[indices[i]];
-    const target = solutions[indices[nextIndex]];
-    candidates.push({
-      id: `${source.name}-${target.name}-${i}`,
-      nodes: [source.name, target.name],
+  const edges = [];
+  for (let i = 0; i < count; i += 1) {
+    const nextIndex = (i + 1) % count;
+    edges.push({
+      id: `${solutions[i].name}-${solutions[nextIndex].name}-primary`,
+      nodes: [solutions[i].name, solutions[nextIndex].name],
     });
   }
 
-  return candidates.slice(0, Math.min(6, candidates.length));
+  if (count > 3) {
+    for (let i = 0; i < count; i += 1) {
+      const diagonalIndex = (i + 2) % count;
+      const id = `${solutions[i].name}-${solutions[diagonalIndex].name}-secondary`;
+      if (!edges.find((edge) => edge.id === id)) {
+        edges.push({ id, nodes: [solutions[i].name, solutions[diagonalIndex].name] });
+      }
+    }
+  }
+
+  return edges;
 }
 
 function buildPath(lineGen, a, b, width, height) {
@@ -63,30 +70,7 @@ function buildPath(lineGen, a, b, width, height) {
   ]);
 }
 
-function averagePosition(nodeNames, positionMap) {
-  const coords = nodeNames
-    .map((name) => positionMap.get(name))
-    .filter(Boolean);
-
-  if (!coords.length) {
-    return { x: 0, y: 0 };
-  }
-
-  const { x, y } = coords.reduce(
-    (acc, point) => ({
-      x: acc.x + point.x,
-      y: acc.y + point.y,
-    }),
-    { x: 0, y: 0 },
-  );
-
-  return {
-    x: x / coords.length,
-    y: y / coords.length,
-  };
-}
-
-function SolutionGraph({ solutions, agents, onSelectionComplete, onAutoGenerate, renderAgentCard, className = '' }) {
+function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGenerate, className = '' }) {
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 960, height: 600 });
   const [connections, setConnections] = useState([]);
@@ -113,6 +97,36 @@ function SolutionGraph({ solutions, agents, onSelectionComplete, onAutoGenerate,
     [],
   );
 
+  const agentNodes = useMemo(() => {
+    if (!agents.length || !positionMap.size) {
+      return [];
+    }
+    return agents
+      .filter((agent) => Array.isArray(agent.solutions) && agent.solutions.length)
+      .map((agent, index) => {
+        const anchors = agent.solutions
+          .map((name) => positionMap.get(name))
+          .filter(Boolean);
+        if (!anchors.length) {
+          return null;
+        }
+        const { x, y } = anchors.reduce(
+          (acc, point) => ({
+            x: acc.x + point.x,
+            y: acc.y + point.y,
+          }),
+          { x: 0, y: 0 },
+        );
+        return {
+          id: agent.id,
+          agent,
+          x: x / anchors.length,
+          y: y / anchors.length,
+          index,
+        };
+      })
+      .filter(Boolean);
+  }, [agents, positionMap]);
   useEffect(() => {
     if (!containerRef.current) return undefined;
 
@@ -136,7 +150,7 @@ function SolutionGraph({ solutions, agents, onSelectionComplete, onAutoGenerate,
       return () => {};
     }
 
-    const newConnections = buildConnections(solutions);
+    const newConnections = buildStableConnections(solutions);
     setShowConnections(false);
     setConnections([]);
     autoSeededRef.current = false;
@@ -241,7 +255,7 @@ function SolutionGraph({ solutions, agents, onSelectionComplete, onAutoGenerate,
   return (
     <div
       ref={containerRef}
-      className={`relative h-full w-full min-h-[400px] ${className}`}
+      className={`relative h-full w-full min-h-[440px] ${className}`}
     >
       <svg
         className="h-full w-full"
@@ -250,8 +264,8 @@ function SolutionGraph({ solutions, agents, onSelectionComplete, onAutoGenerate,
       >
         <defs>
           <radialGradient id="meshGlow" cx="50%" cy="50%" r="75%">
-            <stop offset="0%" stopColor="#F3E5FF" stopOpacity="0.65" />
-            <stop offset="80%" stopColor="#EFF8FF" stopOpacity="0" />
+            <stop offset="0%" stopColor="#CFF6E7" stopOpacity="0.75" />
+            <stop offset="80%" stopColor="#F0FFFA" stopOpacity="0" />
           </radialGradient>
         </defs>
 
@@ -259,7 +273,7 @@ function SolutionGraph({ solutions, agents, onSelectionComplete, onAutoGenerate,
 
         <AnimatePresence>
           {showConnections &&
-            connections.map((edge) => {
+            connections.map((edge, index) => {
               const a = positionMap.get(edge.nodes[0]);
               const b = positionMap.get(edge.nodes[1]);
               if (!a || !b) return null;
@@ -268,22 +282,96 @@ function SolutionGraph({ solutions, agents, onSelectionComplete, onAutoGenerate,
                 <motion.path
                   key={edge.id}
                   d={d}
-                  stroke="#6A0DAD"
-                  strokeWidth={2.5}
-                  strokeOpacity={0.28}
+                  stroke="#08C68B"
+                  strokeWidth={2.6}
+                  strokeOpacity={0.55}
+                  strokeLinecap="round"
+                  strokeDasharray="6 22"
                   fill="none"
-                  initial={{ pathLength: 0, opacity: 0 }}
-                  animate={{ pathLength: 1, opacity: 0.8 }}
-                  transition={{ duration: 1.6, ease: 'easeOut' }}
+                  initial={{ pathLength: 0, opacity: 0, strokeDashoffset: 0 }}
+                  animate={{
+                    pathLength: 1,
+                    strokeDashoffset: [-40, 0],
+                    opacity: [0.35, 0.75, 0.35],
+                  }}
+                  transition={{
+                    pathLength: { duration: 1.2, ease: 'easeOut' },
+                    strokeDashoffset: {
+                      duration: 2.2,
+                      ease: 'linear',
+                      repeat: Infinity,
+                    },
+                    opacity: {
+                      duration: 2.4,
+                      ease: 'easeInOut',
+                      repeat: Infinity,
+                      repeatType: 'mirror',
+                      delay: index * 0.2,
+                    },
+                  }}
                 />
               );
             })}
         </AnimatePresence>
 
+
+        {agentNodes.map((node) =>
+          node.agent.solutions
+            .map((name) => positionMap.get(name))
+            .filter(Boolean)
+            .map((target, idx) => {
+              const d = buildPath(lineGenerator, node, target, dimensions.width, dimensions.height);
+              return (
+                <motion.path
+                  key={`${node.id}-link-${idx}-${target.id || target.x}`}
+                  d={d}
+                  stroke="#0DAE74"
+                  strokeWidth={1.6}
+                  strokeOpacity={0.5}
+                  fill="none"
+                  strokeDasharray="2 10"
+                  initial={{ strokeDashoffset: 16, opacity: 0 }}
+                  animate={{ strokeDashoffset: [-16, 0], opacity: 0.6 }}
+                  transition={{
+                    duration: 1.8,
+                    ease: 'linear',
+                    repeat: Infinity,
+                    repeatType: 'loop',
+                  }}
+                />
+              );
+            })
+        )}
+
+        {agentNodes.length > 1 &&
+          agentNodes.flatMap((source, idx) =>
+            agentNodes.slice(idx + 1).map((target) => {
+              const d = lineGenerator([
+                [source.x, source.y],
+                [(source.x + target.x) / 2, (source.y + target.y) / 2],
+                [target.x, target.y],
+              ]);
+              return (
+                <motion.path
+                  key={`${source.id}-${target.id}-agent-link`}
+                  d={d}
+                  stroke="#08C68B"
+                  strokeWidth={1.2}
+                  strokeOpacity={0.55}
+                  fill="none"
+                  strokeDasharray="1.5 14"
+                  initial={{ strokeDashoffset: 14, opacity: 0 }}
+                  animate={{ strokeDashoffset: [-14, 0], opacity: 0.6 }}
+                  transition={{ duration: 2.4, ease: 'linear', repeat: Infinity }}
+                />
+              );
+            })
+          )}
+
         {dragPath && (
           <path
             d={dragPath}
-            stroke="#0098DB"
+            stroke="#0DAE74"
             strokeWidth={3}
             strokeDasharray="6 6"
             fill="none"
@@ -310,9 +398,9 @@ function SolutionGraph({ solutions, agents, onSelectionComplete, onAutoGenerate,
                   cy={y}
                   r={NODE_RADIUS}
                   fill="#FFFFFF"
-                  stroke={isSelected ? '#0098DB' : '#E4ECF7'}
+                  stroke={isSelected ? '#08C68B' : '#D7F6EB'}
                   strokeWidth={isSelected ? 5 : 3}
-                  style={{ filter: 'drop-shadow(0 14px 40px rgba(106, 13, 173, 0.18))' }}
+                  style={{ filter: 'drop-shadow(0 14px 40px rgba(8, 198, 139, 0.18))' }}
                 />
                 {solution.logoUrl ? (
                   <image
@@ -332,7 +420,7 @@ function SolutionGraph({ solutions, agents, onSelectionComplete, onAutoGenerate,
                     dominantBaseline="central"
                     fontSize="18"
                     fontWeight="700"
-                    fill="#6A0DAD"
+                    fill="#0DAE74"
                   >
                     {solution.name.slice(0, 3).toUpperCase()}
                   </text>
@@ -349,36 +437,48 @@ function SolutionGraph({ solutions, agents, onSelectionComplete, onAutoGenerate,
               </motion.g>
             );
           })}
+        <AnimatePresence>
+          {agentNodes.map((node) => (
+            <motion.g
+              key={node.id}
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.7 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+            >
+              <circle
+                cx={node.x}
+                cy={node.y}
+                r={24}
+                fill="#08C68B"
+                fillOpacity={0.18}
+                stroke="#08C68B"
+                strokeWidth={2}
+              />
+              <circle
+                cx={node.x}
+                cy={node.y}
+                r={16}
+                fill="#08C68B"
+                stroke="#FFFFFF"
+                strokeWidth={2}
+              />
+              <text
+                x={node.x}
+                y={node.y}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize="10"
+                fontWeight="600"
+                fill="#FFFFFF"
+              >
+                {(node.agent.agentName || "Agent").slice(0, 8)}
+              </text>
+            </motion.g>
+          ))}
+        </AnimatePresence>
         </AnimatePresence>
       </svg>
-
-      <div className="pointer-events-none absolute inset-0">
-        <AnimatePresence>
-          {agents.map((agent) => {
-            const pos = averagePosition(agent.solutions, positionMap);
-            if (!pos) {
-              return null;
-            }
-            return (
-              <motion.div
-                key={agent.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 12 }}
-                transition={{ duration: 0.5, ease: 'easeOut' }}
-                style={{
-                  left: pos.x,
-                  top: pos.y,
-                  transform: 'translate(-50%, -50%)',
-                }}
-                className="pointer-events-auto w-64 max-w-[280px]"
-              >
-                {renderAgentCard?.(agent)}
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-      </div>
     </div>
   );
 }

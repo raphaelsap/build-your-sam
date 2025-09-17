@@ -18,10 +18,9 @@ function SolutionReviewPanel({
   const canConfirm = selectionCount >= 2 && selectionCount <= 10;
 
   const helperText = useMemo(() => {
-    if (selectionCount === 0) return 'Select at least two platforms to continue.';
-    if (selectionCount === 1) return 'Choose one more platform (2–3 recommended).';
+    if (selectionCount < 5) return `Select at least five platforms (currently ${selectionCount}).`;
     if (selectionCount > 10) return 'Limit your selection to 10 platforms max.';
-    return `You have ${selectionCount} platform${selectionCount === 1 ? '' : 's'} selected.`;
+    return `${selectionCount} platforms selected.`;
   }, [selectionCount]);
 
   const handleAdd = (event) => {
@@ -37,14 +36,14 @@ function SolutionReviewPanel({
 
   return (
     <motion.div
-      className="mx-auto w-full max-w-5xl rounded-3xl border border-purple-100 bg-white/90 p-6 shadow-mesh backdrop-blur"
+      className="mx-auto w-full max-w-5xl rounded-3xl border border-solaceGreen/30 bg-white/95 p-6 shadow-mesh backdrop-blur"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
     >
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2 text-center">
-          <h2 className="text-2xl font-semibold text-solacePurple">
+          <h2 className="text-2xl font-semibold text-solaceGreen">
             Validate {company ? `${company}'s` : 'your'} enterprise mesh
           </h2>
           <p className="text-sm text-gray-600">
@@ -66,7 +65,7 @@ function SolutionReviewPanel({
                   key={solution.id}
                   className={`rounded-2xl border p-4 shadow-sm transition ${
                     isSelected
-                      ? 'border-solaceBlue bg-solaceBlue/5'
+                      ? 'border-solaceGreen bg-solaceGreen/10'
                       : 'border-gray-200 bg-white'
                   }`}
                 >
@@ -76,7 +75,7 @@ function SolutionReviewPanel({
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => onToggleSelection(solution.id)}
-                        className="mt-1 h-5 w-5 rounded border-gray-300 text-solacePurple focus:ring-solacePurple"
+                        className="mt-1 h-5 w-5 rounded border-gray-300 text-solaceGreen focus:ring-solaceGreen"
                       />
                       <div className="space-y-2">
                         <input
@@ -86,7 +85,7 @@ function SolutionReviewPanel({
                             ...solution,
                             name: event.target.value,
                           })}
-                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-800 focus:border-solaceBlue focus:outline-none focus:ring-2 focus:ring-solaceBlue/40"
+                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-800 focus:border-solaceGreen focus:outline-none focus:ring-2 focus:ring-solaceGreen/40"
                           placeholder="Solution name"
                         />
                         <input
@@ -96,7 +95,7 @@ function SolutionReviewPanel({
                             ...solution,
                             logoUrl: event.target.value,
                           })}
-                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-600 focus:border-solaceBlue focus:outline-none focus:ring-2 focus:ring-solaceBlue/40"
+                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-600 focus:border-solaceGreen focus:outline-none focus:ring-2 focus:ring-solaceGreen/40"
                           placeholder="Logo URL (optional)"
                         />
                       </div>
@@ -118,14 +117,14 @@ function SolutionReviewPanel({
 
         <form
           onSubmit={handleAdd}
-          className="flex flex-col gap-3 rounded-2xl border border-dashed border-purple-200 bg-purple-50/40 p-4"
+          className="flex flex-col gap-3 rounded-2xl border border-dashed border-solaceGreen/40 bg-solaceGreen/5 p-4"
         >
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
               type="text"
               value={newSolution.name}
               onChange={(event) => setNewSolution((prev) => ({ ...prev, name: event.target.value }))}
-              className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-solaceBlue focus:outline-none focus:ring-2 focus:ring-solaceBlue/40"
+              className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-solaceGreen focus:outline-none focus:ring-2 focus:ring-solaceGreen/40"
               placeholder="Add another solution"
               disabled={!canAddMore}
               required
@@ -134,13 +133,13 @@ function SolutionReviewPanel({
               type="url"
               value={newSolution.logoUrl}
               onChange={(event) => setNewSolution((prev) => ({ ...prev, logoUrl: event.target.value }))}
-              className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-solaceBlue focus:outline-none focus:ring-2 focus:ring-solaceBlue/40"
+              className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-solaceGreen focus:outline-none focus:ring-2 focus:ring-solaceGreen/40"
               placeholder="Logo URL (optional)"
               disabled={!canAddMore}
             />
             <button
               type="submit"
-              className="rounded-xl bg-gradient-to-r from-solacePurple to-solaceBlue px-5 py-3 text-sm font-semibold text-white shadow-lg hover:shadow-xl disabled:opacity-50"
+              className="rounded-xl bg-gradient-to-r from-solaceGreen to-[#0DAE74] px-5 py-3 text-sm font-semibold text-white shadow-lg hover:shadow-xl disabled:opacity-50"
               disabled={!canAddMore}
             >
               Add
@@ -166,7 +165,7 @@ function SolutionReviewPanel({
             <button
               type="button"
               onClick={onConfirm}
-              className="rounded-xl bg-solacePurple px-5 py-3 text-sm font-semibold text-white shadow-lg hover:bg-[#5b0b96] disabled:opacity-60 disabled:shadow-none"
+              className="rounded-xl bg-solaceGreen px-5 py-3 text-sm font-semibold text-white shadow-lg hover:bg-[#0DAE74] disabled:opacity-60 disabled:shadow-none"
               disabled={!canConfirm}
             >
               Confirm Selection

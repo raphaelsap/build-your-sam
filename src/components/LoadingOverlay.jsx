@@ -5,14 +5,14 @@ function LoadingOverlay({ isVisible, message = 'Weaving the Solace mesh...' }) {
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-white/85 backdrop-blur"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
         >
           <motion.div
-            className="flex flex-col items-center gap-6 rounded-3xl border border-purple-100 bg-white px-10 py-8 shadow-xl"
+            className="flex flex-col items-center gap-6 rounded-3xl border border-solaceGreen/30 bg-white px-10 py-8 shadow-2xl"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
@@ -20,19 +20,19 @@ function LoadingOverlay({ isVisible, message = 'Weaving the Solace mesh...' }) {
           >
             <div className="relative h-16 w-16">
               <motion.span
-                className="absolute inset-0 rounded-full border-4 border-t-solacePurple border-r-solaceBlue border-b-transparent border-l-transparent"
+                className="absolute inset-0 rounded-full border-4 border-t-solaceGreen border-r-[#0DAE74] border-b-transparent border-l-transparent"
                 animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 1.4, ease: 'linear' }}
+                transition={{ repeat: Infinity, duration: 1.3, ease: 'linear' }}
               />
               <motion.span
-                className="absolute inset-3 rounded-full border border-dashed border-solaceBlue"
+                className="absolute inset-3 rounded-full border border-dashed border-solaceGreen/60"
                 animate={{ rotate: -360 }}
-                transition={{ repeat: Infinity, duration: 2.8, ease: 'linear' }}
+                transition={{ repeat: Infinity, duration: 2.4, ease: 'linear' }}
               />
             </div>
             <div className="text-center">
-              <p className="text-lg font-semibold text-solacePurple">Searching company mesh</p>
-              <p className="text-sm text-gray-600 mt-2 max-w-xs">{message}</p>
+              <p className="text-lg font-semibold text-solaceGreen">Discovering mesh-ready priorities</p>
+              <p className="mt-2 max-w-xs text-sm text-gray-600">{message}</p>
             </div>
           </motion.div>
         </motion.div>

@@ -8,8 +8,44 @@ import BackgroundMesh from './components/BackgroundMesh.jsx';
 import SolutionReviewPanel from './components/SolutionReviewPanel.jsx';
 import LoadingOverlay from './components/LoadingOverlay.jsx';
 
+const LOGO_MAP = {
+  sap: 'https://cdn.simpleicons.org/sap/0FAAFF',
+  'sap s/4hana': 'https://cdn.simpleicons.org/sap/0FAAFF',
+  salesforce: 'https://cdn.simpleicons.org/salesforce/00A1E0',
+  'salesforce crm': 'https://cdn.simpleicons.org/salesforce/00A1E0',
+  workday: 'https://cdn.simpleicons.org/workday/FF6319',
+  servicenow: 'https://cdn.simpleicons.org/servicenow/4CAF50',
+  snowflake: 'https://cdn.simpleicons.org/snowflake/29B5E8',
+  oracle: 'https://cdn.simpleicons.org/oracle/F80000',
+  netsuite: 'https://cdn.simpleicons.org/oracle/F80000',
+  dynamics: 'https://cdn.simpleicons.org/microsoft/0078D4',
+  slack: 'https://cdn.simpleicons.org/slack/4A154B',
+  jira: 'https://cdn.simpleicons.org/jira/0052CC',
+  shopify: 'https://cdn.simpleicons.org/shopify/96BF48',
+  zoom: 'https://cdn.simpleicons.org/zoom/0B5CFF',
+  tableau: 'https://cdn.simpleicons.org/tableau/E97627',
+  mulesoft: 'https://cdn.simpleicons.org/mulesoft/009ADA',
+  'google cloud': 'https://cdn.simpleicons.org/googlecloud/4285F4',
+};
+
+const MAX_AGENTS = 10;
+const MESSAGES_PER_AGENT = 5_500_000;
+
+function getLogoUrl(name, existingUrl) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return existingUrl?.trim() || null;
+  const key = trimmed.toLowerCase();
+  return existingUrl?.trim() || LOGO_MAP[key] || null;
+}
+
+function formatNumber(value) {
+  return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
 function App() {
   const [companyQuery, setCompanyQuery] = useState('');
+  const [customerPriorities, setCustomerPriorities] = useState('');
+  const [discoveredPriorities, setDiscoveredPriorities] = useState({ summary: '', items: [] });
   const [activeCompany, setActiveCompany] = useState('');
   const [solutions, setSolutions] = useState([]);
   const [agents, setAgents] = useState([]);
@@ -18,7 +54,7 @@ function App() {
   const [candidateSolutions, setCandidateSolutions] = useState([]);
   const [selectedSolutionIds, setSelectedSolutionIds] = useState([]);
   const [isReviewing, setIsReviewing] = useState(false);
-
+  
   const resetExperience = useCallback(() => {
     setAgents([]);
     setError('');
@@ -26,6 +62,8 @@ function App() {
     setCandidateSolutions([]);
     setSelectedSolutionIds([]);
     setIsReviewing(false);
+    setCustomerPriorities('');
+    setDiscoveredPriorities({ summary: '', items: [] });
   }, []);
 
   const handleFetchSolutions = useCallback(
@@ -47,15 +85,32 @@ function App() {
         }
         const baseList = Array.isArray(payload.solutions) ? payload.solutions : [];
         const timestamp = Date.now();
-        const enriched = baseList.slice(0, 10).map((item, index) => ({
-          id: `auto-${timestamp}-${index}`,
-          name: item?.name?.trim() || `Solution ${index + 1}`,
-          logoUrl: item?.logoUrl?.trim() || '',
-        }));
+        const enriched = baseList.slice(0, 10).map((item, index) => {
+          const name = item?.name?.trim() || `Solution ${index + 1}`;
+          return {
+            id: `auto-${timestamp}-${index}`,
+            name,
+            logoUrl: getLogoUrl(name, item?.logoUrl),
+          };
+        });
+
+        const rawPriorityItems = Array.isArray(payload?.priorities?.priorities)
+          ? payload.priorities.priorities
+              .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+              .filter(Boolean)
+              .slice(0, 3)
+          : [];
+        const prioritySummary =
+          typeof payload?.priorities?.summary === 'string'
+            ? payload.priorities.summary.trim()
+            : '';
+        const normalizedPriorities = prioritySummary || rawPriorityItems.join('\n');
 
         setCandidateSolutions(enriched);
         setSelectedSolutionIds(enriched.map((item) => item.id));
         setActiveCompany(payload.company || trimmedQuery);
+        setDiscoveredPriorities({ summary: prioritySummary, items: rawPriorityItems });
+        setCustomerPriorities(normalizedPriorities);
         setIsReviewing(true);
       } catch (err) {
         setSolutions([]);
@@ -99,12 +154,14 @@ function App() {
         agentName: 'Designing Agent Mesh...',
         description: 'Drafting a Solace agent tailored to this connection.',
         draftPrompt: 'Generating prompt...',
+        roiEstimate: 'Estimating ROI...',
         isPending: true,
       };
 
       setAgents((prev) => {
         const withoutExisting = prev.filter((agent) => agent.key !== key);
-        return [...withoutExisting, placeholder];
+        const updated = [...withoutExisting, placeholder];
+        return updated.slice(-MAX_AGENTS);
       });
       if (!options.silent) {
         setError('');
@@ -114,7 +171,7 @@ function App() {
         const response = await fetch('/api/agent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ solutions: trimmed }),
+          body: JSON.stringify({ solutions: trimmed, priorities: customerPriorities }),
         });
         const payload = await response.json();
         if (!response.ok) {
@@ -128,11 +185,13 @@ function App() {
           description: payload.description,
           draftPrompt: payload.draftPrompt,
           context: payload.context,
+          roiEstimate: payload.roiEstimate,
           isPending: false,
         };
         setAgents((prev) => {
           const withoutPlaceholder = prev.filter((item) => item.key !== key);
-          return [...withoutPlaceholder, agent];
+          const updated = [...withoutPlaceholder, agent];
+          return updated.slice(-MAX_AGENTS);
         });
       } catch (err) {
         setAgents((prev) => prev.filter((item) => item.key !== key));
@@ -141,7 +200,7 @@ function App() {
         }
       }
     },
-    [agents],
+    [agents, customerPriorities],
   );
 
   const handleAutoGenerate = useCallback(
@@ -155,10 +214,11 @@ function App() {
     [handleGenerateAgent],
   );
 
-  const renderAgentCard = useCallback(
-    (agent) => <AgentCard agent={agent} isGenerating={agent.isPending} />,
-    [],
-  );
+  const hasPriorities = Boolean(customerPriorities.trim());
+  const prioritiesBlurb = hasPriorities
+    ? customerPriorities.trim()
+    : discoveredPriorities.summary || discoveredPriorities.items.join(' • ') ||
+      "Add this year's priorities above so agents focus on what matters most.";
 
   const meshSubtitle = useMemo(() => {
     if (loadingSolutions) {
@@ -168,10 +228,72 @@ function App() {
       return 'Confirm the platforms you want to weave together or add your own before visualising the mesh.';
     }
     if (solutions.length) {
-      return `We discovered ${solutions.length} connected platforms for ${activeCompany}. Drag across any 2-3 to see Solace Agents emerge.`;
+      const priorityNote = hasPriorities
+        ? ' We will tailor agents to your stated priorities.'
+        : '';
+      return `We discovered ${solutions.length} connected platforms for ${activeCompany}. Drag across any 2-3 to see Solace Agents emerge.${priorityNote}`;
     }
     return 'Visualize how Solace Agents weave your enterprise systems together.';
-  }, [loadingSolutions, isReviewing, solutions.length, activeCompany]);
+  }, [loadingSolutions, isReviewing, solutions.length, activeCompany, hasPriorities]);
+
+  const derivedPriorityItems = useMemo(() => {
+    if (discoveredPriorities.items.length) {
+      return discoveredPriorities.items;
+    }
+    if (customerPriorities.trim()) {
+      return customerPriorities
+        .split(/\n|;|,/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 4);
+    }
+    return [];
+  }, [discoveredPriorities, customerPriorities]);
+
+  const metrics = useMemo(() => {
+    const confirmedAgents = agents.filter((agent) => !agent.isPending);
+    const totalAgents = confirmedAgents.length;
+    const totalMessages = totalAgents * MESSAGES_PER_AGENT;
+
+    let aggregatedCurrency = 0;
+    let currencySymbol = '$';
+    const percentImpacts = [];
+
+    confirmedAgents.forEach((agent) => {
+      const estimate = agent.roiEstimate || '';
+      const currencyMatch = estimate.match(/([$€£])\s?([\d,.]+)/);
+      if (currencyMatch) {
+        currencySymbol = currencyMatch[1];
+        aggregatedCurrency += parseFloat(currencyMatch[2].replace(/,/g, '')) || 0;
+      } else {
+        const percentMatch = estimate.match(/([\d]+(?:\.\d+)?)\s?%/);
+        if (percentMatch) {
+          percentImpacts.push(parseFloat(percentMatch[1]));
+        }
+      }
+    });
+
+    const averagePercent = percentImpacts.length
+      ? percentImpacts.reduce((acc, value) => acc + value, 0) / percentImpacts.length
+      : 0;
+
+    const qualitativeBenefits = confirmedAgents
+      .map((agent) => agent.description)
+      .filter(Boolean)
+      .slice(0, 3);
+
+    return {
+      totalAgents,
+      formattedMessages: formatNumber(totalMessages),
+      formattedRoi:
+        aggregatedCurrency > 0
+          ? `${currencySymbol}${formatNumber(Math.round(aggregatedCurrency))}`
+          : averagePercent > 0
+            ? `${averagePercent.toFixed(1)}% annual gain`
+            : 'TBD',
+      qualitativeBenefits,
+    };
+  }, [agents]);
 
   const handleToggleSelection = useCallback((id) => {
     setSelectedSolutionIds((prev) => {
@@ -205,7 +327,7 @@ function App() {
       const entry = {
         id,
         name: solution.name,
-        logoUrl: solution.logoUrl || '',
+        logoUrl: getLogoUrl(solution.name, solution.logoUrl),
       };
       setSelectedSolutionIds((prevSelected) => [...prevSelected, id]);
       return [...prev, entry];
@@ -214,17 +336,20 @@ function App() {
 
   const handleConfirmSolutions = useCallback(() => {
     const selected = candidateSolutions.filter((item) => selectedSolutionIds.includes(item.id));
-    if (selected.length < 2) {
-      setError('Select at least two solutions to visualise the mesh.');
+    if (selected.length < 5) {
+      setError('Select at least five solutions to visualise the mesh.');
       return;
     }
-    const cleaned = selected.slice(0, 10).map((item) => ({
-      name: item.name.trim(),
-      logoUrl: item.logoUrl?.trim() ? item.logoUrl.trim() : null,
-    })).filter((item) => item.name);
+    const cleaned = selected
+      .slice(0, 10)
+      .map((item) => ({
+        name: item.name.trim(),
+        logoUrl: getLogoUrl(item.name, item.logoUrl),
+      }))
+      .filter((item) => item.name);
 
-    if (cleaned.length < 2) {
-      setError('Provide valid names for at least two solutions.');
+    if (cleaned.length < 5) {
+      setError('Provide valid names for at least five solutions.');
       return;
     }
 
@@ -242,23 +367,23 @@ function App() {
   }, []);
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-white text-gray-900">
+    <div className="relative min-h-screen w-full bg-white text-gray-900">
       <BackgroundMesh />
       <LoadingOverlay
         isVisible={loadingSolutions}
-        message="Discovering enterprise platforms via Perplexity."
+        message="Discovering enterprise platforms and priority themes via Perplexity."
       />
       <div className="relative z-10 flex min-h-screen flex-col">
         <header className="pt-12 pb-6">
-          <div className="mx-auto w-full max-w-5xl px-6">
+          <div className="mx-auto w-full max-w-6xl px-6">
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: 'easeOut' }}
               className="text-center"
             >
-              <p className="uppercase text-xs tracking-[0.45em] text-solaceBlue">Solace Agent Mesh</p>
-              <h1 className="mt-4 text-4xl font-semibold text-solacePurple sm:text-5xl">
+              <p className="uppercase text-xs tracking-[0.45em] text-solaceGreen">Solace Agent Mesh</p>
+              <h1 className="mt-4 text-4xl font-semibold text-solaceGreen sm:text-5xl">
                 Build Your Solace Agent Mesh
               </h1>
               <p className="mt-4 text-base text-gray-600 sm:text-lg">
@@ -270,11 +395,13 @@ function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5, ease: 'easeOut' }}
-              className="mt-8 rounded-3xl border border-purple-100 bg-white/90 p-6 shadow-mesh backdrop-blur"
+              className="mt-8 rounded-3xl border border-solaceGreen/30 bg-white/90 p-6 shadow-mesh backdrop-blur"
             >
               <CompanySearch
                 company={companyQuery}
-                onChange={setCompanyQuery}
+                priorities={customerPriorities}
+                onCompanyChange={setCompanyQuery}
+                onPrioritiesChange={setCustomerPriorities}
                 onSubmit={handleFetchSolutions}
                 isLoading={loadingSolutions}
               />
@@ -287,8 +414,8 @@ function App() {
           </div>
         </header>
 
-        <main className="flex-1 px-6 pb-12">
-          <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-8">
+        <main className="flex-1 w-full pb-12">
+          <div className="flex h-full w-full flex-col gap-8 px-4 sm:px-6">
             {isReviewing ? (
               <SolutionReviewPanel
                 company={activeCompany}
@@ -302,26 +429,59 @@ function App() {
                 onCancel={handleCancelReview}
               />
             ) : solutions.length ? (
-              <motion.div
+                            <motion.div
                 key="graph"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
-                className="mx-auto w-full max-w-5xl rounded-3xl border border-purple-50 bg-white/85 p-4 shadow-mesh backdrop-blur"
+                className="w-full rounded-3xl border border-solaceGreen/25 bg-white/85 p-4 shadow-mesh backdrop-blur"
               >
-                <div className="relative h-[65vh] min-h-[420px] w-full">
-                  <SolutionGraph
-                    solutions={solutions}
-                    agents={agents}
-                    onSelectionComplete={handleGenerateAgent}
-                    onAutoGenerate={handleAutoGenerate}
-                    renderAgentCard={renderAgentCard}
-                    className="rounded-3xl"
-                  />
+                <div className="mb-4 rounded-2xl border border-solaceGreen/30 bg-solaceGreen/10 px-4 py-3 text-sm text-gray-700">
+                  <strong className="text-solaceGreen">Solace orchestrates the mesh.</strong> Each platform keeps its native agents while Solace weaves them together for enterprise choreography.
                 </div>
-                <p className="mt-6 text-center text-sm text-gray-500">
-                  Drag across 2–3 nodes to weave a new agent. We will drop it where the mesh intersects.
-                </p>
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
+                  <aside className="w-full lg:w-[28rem]">
+                    <div className="flex h-full flex-col rounded-2xl border border-solaceGreen/30 bg-white/95 p-4 shadow-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <h2 className="text-lg font-semibold text-solaceGreen">Agents in Focus</h2>
+                        <span className="inline-flex items-center justify-center rounded-full bg-solaceGreen/10 px-3 py-1 text-xs font-semibold text-solaceGreen">
+                          {agents.filter((agent) => !agent.isPending).length}/{MAX_AGENTS}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500 leading-relaxed">{prioritiesBlurb}</p>
+                      <p className="mt-1 text-xs text-gray-500">Solace routes events between these agents so Salesforce, SAP, and others can still run their local automations.</p>
+                      <div className="mt-4 flex-1 overflow-y-auto pr-1" style={{ maxHeight: '85vh' }}>
+                        <div className="flex flex-col gap-4">
+                          {agents.length ? (
+                            agents
+                              .slice(-MAX_AGENTS)
+                              .reverse()
+                              .map((agent) => (
+                                <AgentCard key={agent.id} agent={agent} isGenerating={agent.isPending} />
+                              ))
+                          ) : (
+                            <div className="rounded-xl border border-dashed border-solaceGreen/40 bg-solaceGreen/5 p-4 text-sm text-gray-500">
+                              Connect two solutions to mint your first agent.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </aside>
+
+                  <div className="relative flex-1">
+                    <div className="relative h-[65vh] min-h-[420px] w-full rounded-3xl bg-white/92 p-4">
+                      <SolutionGraph
+                        solutions={solutions}
+                        agents={agents.slice(-MAX_AGENTS)}
+                        onSelectionComplete={handleGenerateAgent}
+                        onAutoGenerate={handleAutoGenerate}
+                        className="rounded-3xl"
+                      />
+                    </div>
+                    <p className="mt-6 text-center text-sm text-gray-500">Connect nodes to co-create agents and watch their event paths pulse across the mesh.</p>
+                  </div>
+                </div>
               </motion.div>
             ) : (
               <motion.div
@@ -329,18 +489,49 @@ function App() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, ease: 'easeOut' }}
-                className="rounded-3xl border border-dashed border-purple-100 bg-white/70 px-6 py-16 text-center text-gray-500 backdrop-blur"
+                className="rounded-3xl border border-dashed border-solaceGreen/30 bg-white/70 px-6 py-16 text-center text-gray-500 backdrop-blur"
               >
-                <p>Start by entering a company above. We will pull their enterprise stack using Perplexity AI.</p>
-                <p className="mt-3">
-                  Then drag across the solutions to see Solace Agent Mesh invent orchestrations tailored to them.
-                </p>
+                <p>Enter a company to surface its enterprise mesh and the priorities Solace Agents will amplify.</p>
               </motion.div>
+            )}
+
+            {solutions.length > 0 && (
+              <div className="w-full rounded-3xl border border-solaceGreen/20 bg-white/90 px-6 py-5 shadow-sm">
+                <div className="grid gap-6 md:grid-cols-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Estimated Event Throughput</p>
+                    <p className="mt-1 text-2xl font-semibold text-solaceGreen">
+                      {metrics.formattedMessages} messages/year
+                    </p>
+                    <p className="text-xs text-gray-500">Assuming {formatNumber(MESSAGES_PER_AGENT)} per agent</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Aggregate ROI Signal</p>
+                    <p className="mt-1 text-2xl font-semibold text-solaceGreen">{metrics.formattedRoi}</p>
+                    <p className="text-xs text-gray-500">Blended from generated agent ROI estimates</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Business Benefits</p>
+                    {metrics.qualitativeBenefits.length ? (
+                      <ul className="mt-1 space-y-1 text-sm text-gray-600">
+                        {metrics.qualitativeBenefits.map((benefit, index) => (
+                          <li key={`${benefit}-${index}`} className="flex items-start gap-2">
+                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-solaceGreen" />
+                            <span>{benefit}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-1 text-sm text-gray-600">Generate agents to surface tailored benefit statements.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </main>
 
-        <footer className="px-6 pb-12">
+        <footer className="px-4 pb-12 sm:px-6">
           <BottomPanel />
         </footer>
       </div>
