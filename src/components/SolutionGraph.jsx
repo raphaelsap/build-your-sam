@@ -77,21 +77,6 @@ function buildPath(lineGen, a, b, width, height) {
   };
 }
 
-function interpolatePoints(points, density = 4) {
-  const samples = [];
-  const total = points.length;
-  for (let i = 0; i < total - 1; i += 1) {
-    const [x1, y1] = points[i];
-    const [x2, y2] = points[i + 1];
-    for (let step = 0; step < density; step += 1) {
-      const t = step / density;
-      samples.push([x1 + (x2 - x1) * t, y1 + (y2 - y1) * t]);
-    }
-  }
-  samples.push(points[points.length - 1]);
-  return samples;
-}
-
 function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGenerate, className = '' }) {
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 960, height: 600 });

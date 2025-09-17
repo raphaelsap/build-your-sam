@@ -12,7 +12,7 @@ function CompanySearch({ company, priorities, onCompanyChange, onPrioritiesChang
           className="flex-1 rounded-2xl border border-gray-200 px-5 py-4 text-lg focus:outline-none focus:ring-2 focus:ring-solaceGreen focus:border-transparent shadow-sm transition"
           value={company}
           onChange={(event) => onCompanyChange(event.target.value)}
-          placeholder="e.g., Nike"
+          placeholder="e.g., JP Morgan Chase"
           required
         />
         <button

@@ -16,7 +16,7 @@ export async function fetchCompanySolutions(companyName) {
     },
     {
       role: 'user',
-      content: `Identify the top enterprise software solutions or SaaS platforms likely used by ${trimmedName}. Focus on connectivity-relevant platforms such as ERP, CRM, HRIS, supply chain, analytics, data lake, or iPaaS. Return a JSON array of up to 10 objects with the schema { "name": string, "logoUrl": string | null }. Ensure logo URLs are direct image links (prefer SVG or PNG) from official brand libraries or well-known logo CDNs. If a trustworthy logo URL is unavailable, set "logoUrl" to null.`,
+      content: `Identify the top enterprise software solutions or SaaS platforms most likely used by ${trimmedName}. Optimise for systems that integrate cleanly with Solace Agent Mesh (e.g., SAP S/4HANA, Salesforce, ServiceNow, Workday, Snowflake, Slack, Jira, MuleSoft, Google Cloud). Return a JSON array of up to 10 objects with the schema { "name": string, "logoUrl": string | null }. Ensure logo URLs are direct image links (prefer SVG or PNG) from official brand libraries or well-known logo CDNs. If a trustworthy logo URL is unavailable, set "logoUrl" to null.`,
     },
   ];
 
