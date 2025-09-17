@@ -1,0 +1,10 @@
+applications:
+  - name: build-your-solace-agent-mesh
+    buildpacks:
+      - nodejs_buildpack
+    memory: 512M
+    instances: 1
+    random-route: true
+    command: npm start
+    env:
+      NODE_ENV: production
