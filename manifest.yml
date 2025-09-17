@@ -4,7 +4,8 @@ applications:
       - nodejs_buildpack
     memory: 512M
     instances: 1
-    random-route: true
+    random-route: false
     command: npm start
     env:
       NODE_ENV: production
+      NPM_CONFIG_PRODUCTION: false

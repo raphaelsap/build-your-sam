@@ -63,11 +63,33 @@ function buildPath(lineGen, a, b, width, height) {
   const midY = (a.y + b.y) / 2;
   const controlX = (midX + width / 2) / 2;
   const controlY = (midY + height / 2) / 2;
-  return lineGen([
-    [a.x, a.y],
-    [controlX, controlY],
-    [b.x, b.y],
-  ]);
+  return {
+    d: lineGen([
+      [a.x, a.y],
+      [controlX, controlY],
+      [b.x, b.y],
+    ]),
+    points: [
+      [a.x, a.y],
+      [controlX, controlY],
+      [b.x, b.y],
+    ],
+  };
+}
+
+function interpolatePoints(points, density = 4) {
+  const samples = [];
+  const total = points.length;
+  for (let i = 0; i < total - 1; i += 1) {
+    const [x1, y1] = points[i];
+    const [x2, y2] = points[i + 1];
+    for (let step = 0; step < density; step += 1) {
+      const t = step / density;
+      samples.push([x1 + (x2 - x1) * t, y1 + (y2 - y1) * t]);
+    }
+  }
+  samples.push(points[points.length - 1]);
+  return samples;
 }
 
 function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGenerate, className = '' }) {
@@ -127,6 +149,7 @@ function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGene
       })
       .filter(Boolean);
   }, [agents, positionMap]);
+
   useEffect(() => {
     if (!containerRef.current) return undefined;
 
@@ -252,6 +275,11 @@ function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGene
     return lineGenerator(pathPoints);
   }, [dragState, pointer, positionMap, lineGenerator]);
 
+  const meshCenter = useMemo(
+    () => ({ x: dimensions.width / 2, y: dimensions.height / 2 }),
+    [dimensions],
+  );
+
   return (
     <div
       ref={containerRef}
@@ -267,78 +295,103 @@ function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGene
             <stop offset="0%" stopColor="#CFF6E7" stopOpacity="0.75" />
             <stop offset="80%" stopColor="#F0FFFA" stopOpacity="0" />
           </radialGradient>
+          {positions.map((pos, idx) => (
+            <clipPath key={`clip-${idx}`} id={`clip-${idx}`}>
+              <circle cx={pos.x} cy={pos.y} r={NODE_RADIUS - 5} />
+            </clipPath>
+          ))}
         </defs>
 
         <rect width="100%" height="100%" fill="url(#meshGlow)" />
 
+        <g className="pointer-events-none">
+          <circle
+            cx={meshCenter.x}
+            cy={meshCenter.y}
+            r={38}
+            fill="#08C68B"
+            opacity={0.12}
+          />
+          <circle
+            cx={meshCenter.x}
+            cy={meshCenter.y}
+            r={26}
+            fill="#08C68B"
+            opacity={0.22}
+          />
+          <circle
+            cx={meshCenter.x}
+            cy={meshCenter.y}
+            r={18}
+            fill="#08C68B"
+          />
+          <text
+            x={meshCenter.x}
+            y={meshCenter.y}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize="11"
+            fontWeight="700"
+            fill="#FFFFFF"
+          >
+            Solace
+          </text>
+        </g>
+
         <AnimatePresence>
           {showConnections &&
-            connections.map((edge, index) => {
+            connections.map((edge) => {
               const a = positionMap.get(edge.nodes[0]);
               const b = positionMap.get(edge.nodes[1]);
               if (!a || !b) return null;
-              const d = buildPath(lineGenerator, a, b, dimensions.width, dimensions.height);
+              const { d, points } = buildPath(lineGenerator, a, b, dimensions.width, dimensions.height);
+              const keyframesX = points.map((point) => point[0]);
+              const keyframesY = points.map((point) => point[1]);
               return (
-                <motion.path
-                  key={edge.id}
-                  d={d}
-                  stroke="#08C68B"
-                  strokeWidth={2.6}
-                  strokeOpacity={0.55}
-                  strokeLinecap="round"
-                  strokeDasharray="6 22"
-                  fill="none"
-                  initial={{ pathLength: 0, opacity: 0, strokeDashoffset: 0 }}
-                  animate={{
-                    pathLength: 1,
-                    strokeDashoffset: [-40, 0],
-                    opacity: [0.35, 0.75, 0.35],
-                  }}
-                  transition={{
-                    pathLength: { duration: 1.2, ease: 'easeOut' },
-                    strokeDashoffset: {
-                      duration: 2.2,
-                      ease: 'linear',
-                      repeat: Infinity,
-                    },
-                    opacity: {
-                      duration: 2.4,
-                      ease: 'easeInOut',
-                      repeat: Infinity,
-                      repeatType: 'mirror',
-                      delay: index * 0.2,
-                    },
-                  }}
-                />
+                <g key={edge.id}>
+                  <path
+                    d={d}
+                    stroke="#08C68B"
+                    strokeWidth={2.6}
+                    strokeOpacity={0.55}
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+                  <motion.circle
+                    r={3}
+                    fill="#056E3E"
+                    animate={{ cx: keyframesX, cy: keyframesY }}
+                    transition={{ duration: 3.2, ease: 'linear', repeat: Infinity }}
+                  />
+                </g>
               );
             })}
         </AnimatePresence>
-
 
         {agentNodes.map((node) =>
           node.agent.solutions
             .map((name) => positionMap.get(name))
             .filter(Boolean)
             .map((target, idx) => {
-              const d = buildPath(lineGenerator, node, target, dimensions.width, dimensions.height);
+              const { d, points } = buildPath(lineGenerator, node, target, dimensions.width, dimensions.height);
+              const keyframesX = points.map((point) => point[0]);
+              const keyframesY = points.map((point) => point[1]);
               return (
-                <motion.path
-                  key={`${node.id}-link-${idx}-${target.id || target.x}`}
-                  d={d}
-                  stroke="#0DAE74"
-                  strokeWidth={1.6}
-                  strokeOpacity={0.5}
-                  fill="none"
-                  strokeDasharray="2 10"
-                  initial={{ strokeDashoffset: 16, opacity: 0 }}
-                  animate={{ strokeDashoffset: [-16, 0], opacity: 0.6 }}
-                  transition={{
-                    duration: 1.8,
-                    ease: 'linear',
-                    repeat: Infinity,
-                    repeatType: 'loop',
-                  }}
-                />
+                <g key={`${node.id}-link-${idx}-${target.id || target.x}`}>
+                  <path
+                    d={d}
+                    stroke="#0C8150"
+                    strokeWidth={1.7}
+                    strokeOpacity={0.6}
+                    fill="none"
+                  />
+                  <motion.circle
+                    r={2.6}
+                    fill="#045E32"
+                    animate={{ cx: keyframesX, cy: keyframesY }}
+                    transition={{ duration: 2.6, ease: 'linear', repeat: Infinity }}
+                  />
+                </g>
               );
             })
         )}
@@ -346,26 +399,36 @@ function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGene
         {agentNodes.length > 1 &&
           agentNodes.flatMap((source, idx) =>
             agentNodes.slice(idx + 1).map((target) => {
-              const d = lineGenerator([
+              const control = [
+                (source.x + target.x) / 2,
+                (source.y + target.y) / 2,
+              ];
+              const points = [
                 [source.x, source.y],
-                [(source.x + target.x) / 2, (source.y + target.y) / 2],
+                control,
                 [target.x, target.y],
-              ]);
+              ];
+              const d = lineGenerator(points);
+              const keyframesX = points.map((point) => point[0]);
+              const keyframesY = points.map((point) => point[1]);
               return (
-                <motion.path
-                  key={`${source.id}-${target.id}-agent-link`}
-                  d={d}
-                  stroke="#08C68B"
-                  strokeWidth={1.2}
-                  strokeOpacity={0.55}
-                  fill="none"
-                  strokeDasharray="1.5 14"
-                  initial={{ strokeDashoffset: 14, opacity: 0 }}
-                  animate={{ strokeDashoffset: [-14, 0], opacity: 0.6 }}
-                  transition={{ duration: 2.4, ease: 'linear', repeat: Infinity }}
-                />
+                <g key={`${source.id}-${target.id}-agent-link`}>
+                  <path
+                    d={d}
+                    stroke="#0F8F58"
+                    strokeWidth={1.2}
+                    strokeOpacity={0.55}
+                    fill="none"
+                  />
+                  <motion.circle
+                    r={2.4}
+                    fill="#0A6B3D"
+                    animate={{ cx: keyframesX, cy: keyframesY }}
+                    transition={{ duration: 3.4, ease: 'linear', repeat: Infinity }}
+                  />
+                </g>
               );
-            })
+            }),
           )}
 
         {dragPath && (
@@ -405,26 +468,26 @@ function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGene
                 {solution.logoUrl ? (
                   <image
                     href={solution.logoUrl}
-                    x={x - NODE_RADIUS * 0.55}
-                    y={y - NODE_RADIUS * 0.55}
-                    height={NODE_RADIUS * 1.1}
-                    width={NODE_RADIUS * 1.1}
-                    clipPath={`circle(${NODE_RADIUS * 0.55}px at ${x}px ${y}px)`}
+                    x={x - NODE_RADIUS}
+                    y={y - NODE_RADIUS}
+                    width={NODE_RADIUS * 2}
+                    height={NODE_RADIUS * 2}
                     preserveAspectRatio="xMidYMid meet"
+                    clipPath={`url(#clip-${index})`}
+                    style={{ pointerEvents: 'none' }}
                   />
-                ) : (
-                  <text
-                    x={x}
-                    y={y}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fontSize="18"
-                    fontWeight="700"
-                    fill="#0DAE74"
-                  >
-                    {solution.name.slice(0, 3).toUpperCase()}
-                  </text>
-                )}
+                ) : null}
+                <text
+                  x={x}
+                  y={y}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize="18"
+                  fontWeight="700"
+                  fill="#1F2933"
+                >
+                  {solution.logoUrl ? '' : solution.name.slice(0, 3).toUpperCase()}
+                </text>
                 <text
                   x={x}
                   y={y + NODE_RADIUS + 20}
@@ -437,6 +500,8 @@ function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGene
               </motion.g>
             );
           })}
+        </AnimatePresence>
+
         <AnimatePresence>
           {agentNodes.map((node) => (
             <motion.g
@@ -445,6 +510,7 @@ function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGene
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.7 }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
+              className="pointer-events-none"
             >
               <circle
                 cx={node.x}
@@ -459,8 +525,8 @@ function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGene
                 cx={node.x}
                 cy={node.y}
                 r={16}
-                fill="#08C68B"
-                stroke="#FFFFFF"
+                fill="#FFFFFF"
+                stroke="#08C68B"
                 strokeWidth={2}
               />
               <text
@@ -470,13 +536,12 @@ function SolutionGraph({ solutions, agents = [], onSelectionComplete, onAutoGene
                 dominantBaseline="central"
                 fontSize="10"
                 fontWeight="600"
-                fill="#FFFFFF"
+                fill="#1F2933"
               >
-                {(node.agent.agentName || "Agent").slice(0, 8)}
+                {(node.agent.agentName || 'Agent').slice(0, 10)}
               </text>
             </motion.g>
           ))}
-        </AnimatePresence>
         </AnimatePresence>
       </svg>
     </div>

@@ -5,14 +5,14 @@ function CompanySearch({ company, priorities, onCompanyChange, onPrioritiesChang
       className="w-full flex flex-col gap-4"
     >
       <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-        Enter a company name
+        Please enter the name of your organization
       </label>
       <div className="flex flex-col sm:flex-row gap-3">
         <input
           className="flex-1 rounded-2xl border border-gray-200 px-5 py-4 text-lg focus:outline-none focus:ring-2 focus:ring-solaceGreen focus:border-transparent shadow-sm transition"
           value={company}
           onChange={(event) => onCompanyChange(event.target.value)}
-          placeholder="e.g., L'Oréal"
+          placeholder="e.g., Nike"
           required
         />
         <button
@@ -25,7 +25,7 @@ function CompanySearch({ company, priorities, onCompanyChange, onPrioritiesChang
       </div>
 
       <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-        Customer priorities for this year (auto-discovered, editable)
+        Your priorities for this year (auto-discovered, editable)
       </label>
       <textarea
         className="min-h-[110px] rounded-2xl border border-gray-200 px-5 py-4 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-solaceGreen/70 focus:border-transparent shadow-sm transition"

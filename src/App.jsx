@@ -28,14 +28,75 @@ const LOGO_MAP = {
   'google cloud': 'https://cdn.simpleicons.org/googlecloud/4285F4',
 };
 
+const VENDOR_AGENT_TEMPLATES = [
+  {
+    vendor: 'SAP',
+    keywords: ['sap'],
+    agentName: 'SAP Standard Agent',
+    description: 'SAP’s packaged integration agent streams S/4HANA events directly into Solace Mesh.',
+    draftPrompt:
+      'You operate the SAP Standard Agent for the enterprise. Relay S/4HANA business events (orders, shipments, inventory signals) into the Solace Agent Mesh so downstream agents stay synchronized while SAP keeps its native automations.',
+    roiEstimate: 'Bundled with SAP event enablement—focus on faster deployments.',
+  },
+  {
+    vendor: 'Salesforce',
+    keywords: ['salesforce'],
+    agentName: 'Salesforce Standard Agent',
+    description: 'Salesforce’s packaged agent streams CRM changes into the mesh for cross-cloud playbooks.',
+    draftPrompt:
+      'You manage the Salesforce Standard Agent. Capture opportunity, service, and marketing events from Salesforce and publish them into the Solace Agent Mesh while respecting Salesforce guardrails and rate limits.',
+    roiEstimate: 'Salesforce event relays accelerate revenue orchestration.',
+  },
+];
+
+const VALUE_KEYWORDS = [
+  { label: 'Customer Experience Gains', test: /(customer|experience|service|engagement|journey)/i },
+  { label: 'Operational Efficiency', test: /(operation|process|automation|latency|throughput|workflow)/i },
+  { label: 'Revenue Intelligence', test: /(revenue|sales|pipeline|forecast|upsell|quote)/i },
+  { label: 'Compliance & Resilience', test: /(compliance|risk|resilien|audit|governance)/i },
+];
+
 const MAX_AGENTS = 10;
 const MESSAGES_PER_AGENT = 5_500_000;
+
+function toTitleCase(value = '') {
+  return value
+    .trim()
+    .split(/\s+/)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+    .join(' ');
+}
 
 function getLogoUrl(name, existingUrl) {
   const trimmed = (name || '').trim();
   if (!trimmed) return existingUrl?.trim() || null;
   const key = trimmed.toLowerCase();
   return existingUrl?.trim() || LOGO_MAP[key] || null;
+}
+
+function buildVendorAgents(solutions) {
+  return VENDOR_AGENT_TEMPLATES.flatMap((template) => {
+    const matched = solutions.filter((solution) =>
+      template.keywords.some((kw) => solution.name.toLowerCase().includes(kw)),
+    );
+    if (!matched.length) {
+      return [];
+    }
+    const attachedSolutions = matched.map((item) => item.name);
+    return [
+      {
+        id: `vendor-${template.vendor.toLowerCase()}`,
+        key: `vendor-${template.vendor.toLowerCase()}`,
+        solutions: attachedSolutions,
+        agentName: template.agentName,
+        description: template.description,
+        draftPrompt: template.draftPrompt,
+        roiEstimate: template.roiEstimate,
+        context: 'Vendor-supplied agent package',
+        isPending: false,
+      },
+    ];
+  });
 }
 
 function formatNumber(value) {
@@ -54,7 +115,7 @@ function App() {
   const [candidateSolutions, setCandidateSolutions] = useState([]);
   const [selectedSolutionIds, setSelectedSolutionIds] = useState([]);
   const [isReviewing, setIsReviewing] = useState(false);
-  
+
   const resetExperience = useCallback(() => {
     setAgents([]);
     setError('');
@@ -105,10 +166,11 @@ function App() {
             ? payload.priorities.summary.trim()
             : '';
         const normalizedPriorities = prioritySummary || rawPriorityItems.join('\n');
+        const normalizedCompany = toTitleCase(payload.company || trimmedQuery);
 
         setCandidateSolutions(enriched);
         setSelectedSolutionIds(enriched.map((item) => item.id));
-        setActiveCompany(payload.company || trimmedQuery);
+        setActiveCompany(normalizedCompany);
         setDiscoveredPriorities({ summary: prioritySummary, items: rawPriorityItems });
         setCustomerPriorities(normalizedPriorities);
         setIsReviewing(true);
@@ -255,42 +317,34 @@ function App() {
     const totalAgents = confirmedAgents.length;
     const totalMessages = totalAgents * MESSAGES_PER_AGENT;
 
-    let aggregatedCurrency = 0;
-    let currencySymbol = '$';
-    const percentImpacts = [];
-
-    confirmedAgents.forEach((agent) => {
-      const estimate = agent.roiEstimate || '';
-      const currencyMatch = estimate.match(/([$€£])\s?([\d,.]+)/);
-      if (currencyMatch) {
-        currencySymbol = currencyMatch[1];
-        aggregatedCurrency += parseFloat(currencyMatch[2].replace(/,/g, '')) || 0;
-      } else {
-        const percentMatch = estimate.match(/([\d]+(?:\.\d+)?)\s?%/);
-        if (percentMatch) {
-          percentImpacts.push(parseFloat(percentMatch[1]));
-        }
-      }
-    });
-
-    const averagePercent = percentImpacts.length
-      ? percentImpacts.reduce((acc, value) => acc + value, 0) / percentImpacts.length
-      : 0;
-
     const qualitativeBenefits = confirmedAgents
       .map((agent) => agent.description)
       .filter(Boolean)
       .slice(0, 3);
 
+    const valueCounts = VALUE_KEYWORDS.map((entry) => ({ ...entry, count: 0 }));
+    confirmedAgents.forEach((agent) => {
+      const corpus = `${agent.description} ${agent.draftPrompt || ''}`;
+      valueCounts.forEach((entry) => {
+        if (entry.test.test(corpus)) {
+          entry.count += 1;
+        }
+      });
+    });
+    const valueLevers = valueCounts
+      .filter((entry) => entry.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .map((entry) => entry.label)
+      .slice(0, 3);
+
+    if (!valueLevers.length) {
+      valueLevers.push('Faster cross-platform orchestration', 'Improved decision latency');
+    }
+
     return {
       totalAgents,
       formattedMessages: formatNumber(totalMessages),
-      formattedRoi:
-        aggregatedCurrency > 0
-          ? `${currencySymbol}${formatNumber(Math.round(aggregatedCurrency))}`
-          : averagePercent > 0
-            ? `${averagePercent.toFixed(1)}% annual gain`
-            : 'TBD',
+      valueLevers,
       qualitativeBenefits,
     };
   }, [agents]);
@@ -337,7 +391,7 @@ function App() {
   const handleConfirmSolutions = useCallback(() => {
     const selected = candidateSolutions.filter((item) => selectedSolutionIds.includes(item.id));
     if (selected.length < 5) {
-      setError('Select at least five solutions to visualise the mesh.');
+      setError(`Select at least five platforms (currently ${selected.length}).`);
       return;
     }
     const cleaned = selected
@@ -353,9 +407,11 @@ function App() {
       return;
     }
 
+    const vendorAgents = buildVendorAgents(cleaned);
+
     setSolutions(cleaned);
     setIsReviewing(false);
-    setAgents([]);
+    setAgents(vendorAgents);
     setError('');
   }, [candidateSolutions, selectedSolutionIds]);
 
@@ -429,7 +485,7 @@ function App() {
                 onCancel={handleCancelReview}
               />
             ) : solutions.length ? (
-                            <motion.div
+              <motion.div
                 key="graph"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -449,7 +505,7 @@ function App() {
                         </span>
                       </div>
                       <p className="mt-2 text-xs text-gray-500 leading-relaxed">{prioritiesBlurb}</p>
-                      <p className="mt-1 text-xs text-gray-500">Solace routes events between these agents so Salesforce, SAP, and others can still run their local automations.</p>
+                      <p className="mt-1 text-xs text-gray-500">Solace routes events between these agents so Salesforce, SAP, and others can retain their local automations.</p>
                       <div className="mt-4 flex-1 overflow-y-auto pr-1" style={{ maxHeight: '85vh' }}>
                         <div className="flex flex-col gap-4">
                           {agents.length ? (
@@ -479,7 +535,9 @@ function App() {
                         className="rounded-3xl"
                       />
                     </div>
-                    <p className="mt-6 text-center text-sm text-gray-500">Connect nodes to co-create agents and watch their event paths pulse across the mesh.</p>
+                    <p className="mt-6 text-center text-sm text-gray-500">
+                      Connect nodes to co-create agents and watch their event paths pulse across the mesh.
+                    </p>
                   </div>
                 </div>
               </motion.div>
@@ -506,9 +564,15 @@ function App() {
                     <p className="text-xs text-gray-500">Assuming {formatNumber(MESSAGES_PER_AGENT)} per agent</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-gray-500">Aggregate ROI Signal</p>
-                    <p className="mt-1 text-2xl font-semibold text-solaceGreen">{metrics.formattedRoi}</p>
-                    <p className="text-xs text-gray-500">Blended from generated agent ROI estimates</p>
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Value Levers</p>
+                    <ul className="mt-1 space-y-1 text-sm text-gray-600">
+                      {metrics.valueLevers.map((lever, index) => (
+                        <li key={`${lever}-${index}`} className="flex items-start gap-2">
+                          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-solaceGreen" />
+                          <span>{lever}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-wide text-gray-500">Business Benefits</p>

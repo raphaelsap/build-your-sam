@@ -1,0 +1,41 @@
+name: Deploy to Cloud Foundry
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies and build frontend
+        run: |
+          npm install
+          npm run build
+
+      - name: Install Cloud Foundry CLI
+        run: |
+          wget -q -O cf-cli.deb https://packages.cloudfoundry.org/stable?release=debian64&source=github
+          sudo dpkg -i cf-cli.deb
+          cf --version
+
+      - name: Log in to Cloud Foundry
+        run: |
+          cf login -a ${{ secrets.CF_API }} \
+            -u ${{ secrets.CF_USERNAME }} \
+            -p ${{ secrets.CF_PASSWORD }} \
+            -o ${{ secrets.CF_ORG }} \
+            -s ${{ secrets.CF_SPACE }}
+
+      - name: Deploy app to Cloud Foundry
+        run: |
+          cf push
