@@ -18,16 +18,16 @@ const FALLBACK_SOLUTIONS = [
 
 function LOGO_MAP_PLACEHOLDER(key) {
   const map = {
-    sap: 'https://cdn.simpleicons.org/sap/0FAAFF',
-    salesforce: 'https://cdn.simpleicons.org/salesforce/00A1E0',
-    servicenow: 'https://cdn.simpleicons.org/servicenow/4CAF50',
-    workday: 'https://cdn.simpleicons.org/workday/FF6319',
-    snowflake: 'https://cdn.simpleicons.org/snowflake/29B5E8',
-    slack: 'https://cdn.simpleicons.org/slack/4A154B',
-    jira: 'https://cdn.simpleicons.org/jira/0052CC',
-    oracle: 'https://cdn.simpleicons.org/oracle/F80000',
-    mulesoft: 'https://cdn.simpleicons.org/mulesoft/009ADA',
-    'google cloud': 'https://cdn.simpleicons.org/googlecloud/4285F4',
+    sap: 'https://upload.wikimedia.org/wikipedia/commons/5/59/SAP_2011_logo.svg',
+    salesforce: 'https://upload.wikimedia.org/wikipedia/commons/f/f9/Salesforce.com_logo.svg',
+    servicenow: 'https://upload.wikimedia.org/wikipedia/commons/0/05/ServiceNow_logo.svg',
+    workday: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Workday_logo.svg',
+    snowflake: 'https://upload.wikimedia.org/wikipedia/commons/7/7b/Snowflake_Logo.svg',
+    slack: 'https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg',
+    jira: 'https://upload.wikimedia.org/wikipedia/commons/8/82/Jira_%28Software%29_logo.svg',
+    oracle: 'https://upload.wikimedia.org/wikipedia/commons/5/50/Oracle_logo.svg',
+    mulesoft: 'https://upload.wikimedia.org/wikipedia/commons/6/60/MuleSoft_logo.svg',
+    'google cloud': 'https://upload.wikimedia.org/wikipedia/commons/5/5f/Google_Cloud_logo.svg',
   };
   return map[key] || null;
 }

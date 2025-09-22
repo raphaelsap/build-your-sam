@@ -119,5 +119,6 @@ cf restage build-your-solace-agent-mesh
 - The default agent-generation flow falls back to Perplexity if an OpenAI key is not supplied; customise `server/services/agentService.js` for other providers.
 - Tailor the prompts inside `solutionService` and `agentService` to match your industry verticals or preferred tone.
 - For production, consider persisting cached Perplexity/OpenAI responses to reduce latency and API spend.
+- **Custom logos:** drop SVG or PNG files into `public/logos/` (e.g. `public/logos/sap.svg`) and point the matching entry in `LOGO_MAP` inside `src/App.jsx` to `/logos/sap.svg`. Entries without a local asset will fall back to the hosted defaults or render as a clean label-only node.
 
 Enjoy weaving Solace Agent Mesh stories!

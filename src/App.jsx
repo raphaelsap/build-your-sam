@@ -9,23 +9,28 @@ import SolutionReviewPanel from './components/SolutionReviewPanel.jsx';
 import LoadingOverlay from './components/LoadingOverlay.jsx';
 
 const LOGO_MAP = {
-  sap: 'https://cdn.simpleicons.org/sap/0FAAFF',
-  'sap s/4hana': 'https://cdn.simpleicons.org/sap/0FAAFF',
-  salesforce: 'https://cdn.simpleicons.org/salesforce/00A1E0',
-  'salesforce crm': 'https://cdn.simpleicons.org/salesforce/00A1E0',
-  workday: 'https://cdn.simpleicons.org/workday/FF6319',
-  servicenow: 'https://cdn.simpleicons.org/servicenow/4CAF50',
-  snowflake: 'https://cdn.simpleicons.org/snowflake/29B5E8',
-  oracle: 'https://cdn.simpleicons.org/oracle/F80000',
-  netsuite: 'https://cdn.simpleicons.org/oracle/F80000',
-  dynamics: 'https://cdn.simpleicons.org/microsoft/0078D4',
-  slack: 'https://cdn.simpleicons.org/slack/4A154B',
-  jira: 'https://cdn.simpleicons.org/jira/0052CC',
-  shopify: 'https://cdn.simpleicons.org/shopify/96BF48',
-  zoom: 'https://cdn.simpleicons.org/zoom/0B5CFF',
-  tableau: 'https://cdn.simpleicons.org/tableau/E97627',
-  mulesoft: 'https://cdn.simpleicons.org/mulesoft/009ADA',
-  'google cloud': 'https://cdn.simpleicons.org/googlecloud/4285F4',
+  sap: 'https://upload.wikimedia.org/wikipedia/commons/5/59/SAP_2011_logo.svg',
+  'sap s/4hana': 'https://upload.wikimedia.org/wikipedia/commons/5/59/SAP_2011_logo.svg',
+  salesforce: 'https://upload.wikimedia.org/wikipedia/commons/f/f9/Salesforce.com_logo.svg',
+  salesforce: 'https://upload.wikimedia.org/wikipedia/commons/f/f9/Salesforce.com_logo.svg',
+  servicenow: 'https://upload.wikimedia.org/wikipedia/commons/0/05/ServiceNow_logo.svg',
+  snowflake: 'https://upload.wikimedia.org/wikipedia/commons/7/7b/Snowflake_Logo.svg',
+  workday: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Workday_logo.svg',
+  mulesoft: 'https://upload.wikimedia.org/wikipedia/commons/6/60/MuleSoft_logo.svg',
+  oracle: 'https://upload.wikimedia.org/wikipedia/commons/5/50/Oracle_logo.svg',
+  netsuite: 'https://upload.wikimedia.org/wikipedia/commons/5/50/Oracle_logo.svg',
+  dynamics: 'https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg',
+  slack: 'https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg',
+  jira: 'https://upload.wikimedia.org/wikipedia/commons/8/82/Jira_%28Software%29_logo.svg',
+  tableau: 'https://upload.wikimedia.org/wikipedia/commons/4/4b/Tableau_Logo.svg',
+  shopify: 'https://upload.wikimedia.org/wikipedia/commons/1/1e/Shopify_logo_2018.svg',
+  zoom: 'https://upload.wikimedia.org/wikipedia/commons/7/75/Zoom_Communications_Logo.svg',
+  'google cloud': 'https://upload.wikimedia.org/wikipedia/commons/5/5f/Google_Cloud_logo.svg',
+  aws: 'https://upload.wikimedia.org/wikipedia/commons/9/93/Amazon_Web_Services_Logo.svg',
+  sapconcur: 'https://upload.wikimedia.org/wikipedia/commons/3/3f/SAP_Concur_Logo.svg',
+  snowflakeinc: 'https://upload.wikimedia.org/wikipedia/commons/7/7b/Snowflake_Logo.svg',
+  servicenowitsm: 'https://upload.wikimedia.org/wikipedia/commons/0/05/ServiceNow_logo.svg',
+  workdayhcm: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Workday_logo.svg',
 };
 
 const LOGO_ALIASES = {
@@ -34,6 +39,7 @@ const LOGO_ALIASES = {
   'sap cloud platform': 'sap',
   'sap erp': 'sap',
   'sap ecc': 'sap',
+  'sap concur': 'sapconcur',
   'salesforce service cloud': 'salesforce',
   'salesforce marketing cloud': 'salesforce',
   'salesforce commerce cloud': 'salesforce',
@@ -47,9 +53,15 @@ const LOGO_ALIASES = {
   'jira service management': 'jira',
   'atlassian jira': 'jira',
   'slack enterprise': 'slack',
+  'aws cloud': 'aws',
+  'amazon web services': 'aws',
   'oracle fusion': 'oracle',
   'oracle cloud': 'oracle',
   'workday hcm': 'workday',
+  'workday adaptive planning': 'workday',
+  'servicenow platform': 'servicenow',
+  'snowflake data cloud': 'snowflake',
+  'mulesoft anypoint': 'mulesoft',
 };
 
 
@@ -82,7 +94,7 @@ const VALUE_KEYWORDS = [
   { label: 'Compliance & Resilience', test: /(compliance|risk|resilien|audit|governance)/i },
 ];
 
-const MAX_AGENTS = 10;
+const MAX_AGENTS = 6;
 const MESSAGES_PER_AGENT = 5_500_000;
 
 function toTitleCase(value = '') {
@@ -516,6 +528,7 @@ function App() {
     const cleaned = selected
       .slice(0, 10)
       .map((item) => ({
+        id: item.id,
         name: item.name.trim(),
         logoUrl: getLogoUrl(item.name, item.logoUrl),
       }))
@@ -609,53 +622,56 @@ function App() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
-                className="w-full rounded-3xl border border-solaceGreen/25 bg-white/85 p-4 shadow-mesh backdrop-blur"
+                className="w-full rounded-3xl border border-solaceGreen/20 bg-white/75 p-4 shadow-sm backdrop-blur-sm"
               >
-                <div className="mb-4 rounded-2xl border border-solaceGreen/30 bg-solaceGreen/10 px-4 py-3 text-sm text-gray-700">
-                  <strong className="text-solaceGreen">Solace orchestrates your digital nerve centre.</strong> Vendor agents continue to run locally while Solace synchronises their events in real time.
+                <div className="mb-4 rounded-2xl border border-solaceGreen/20 bg-white/85 px-4 py-3 text-sm text-gray-700 shadow-sm">
+                  <strong className="text-solaceGreen">Solace orchestrates your digital nerve centre.</strong> Keep vendor automations local while the mesh handles cross-platform messaging.
                 </div>
                 {(enterpriseContext.synergyInsights?.length || enterpriseContext.industryComparisons?.length) && (
-                  <div className="mb-4 grid gap-4 md:grid-cols-2">
+                  <div className="mb-4 space-y-4">
                     {enterpriseContext.synergyInsights?.length ? (
-                      <div className="rounded-2xl border border-solaceGreen/20 bg-white/90 p-4 shadow-sm">
-                        <h3 className="text-sm font-semibold text-solaceGreen">Synergy Agents to Spotlight</h3>
-                        <ul className="mt-2 space-y-1 text-sm text-gray-600">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-solaceGreen">Synergy Highlights</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
                           {enterpriseContext.synergyInsights.map((item, index) => (
-                            <li key={`synergy-${index}`} className="flex items-start gap-2">
-                              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-solaceGreen" />
-                              <span>{item}</span>
-                            </li>
+                            <span
+                              key={`synergy-${index}`}
+                              className="rounded-full border border-solaceGreen/20 bg-white/90 px-3 py-1 text-xs text-gray-600 shadow-sm"
+                            >
+                              {item}
+                            </span>
                           ))}
-                        </ul>
+                        </div>
                       </div>
                     ) : null}
                     {enterpriseContext.industryComparisons?.length ? (
-                      <div className="rounded-2xl border border-solaceGreen/20 bg-white/90 p-4 shadow-sm">
-                        <h3 className="text-sm font-semibold text-solaceGreen">Industry Benchmarks</h3>
-                        <ul className="mt-2 space-y-1 text-sm text-gray-600">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-solaceGreen">Industry Benchmarks</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
                           {enterpriseContext.industryComparisons.map((item, index) => (
-                            <li key={`benchmark-${index}`} className="flex items-start gap-2">
-                              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-solaceGreen" />
-                              <span>{item}</span>
-                            </li>
+                            <span
+                              key={`benchmark-${index}`}
+                              className="rounded-full border border-solaceGreen/15 bg-white/85 px-3 py-1 text-xs text-gray-600 shadow-sm"
+                            >
+                              {item}
+                            </span>
                           ))}
-                        </ul>
+                        </div>
                       </div>
                     ) : null}
                   </div>
                 )}
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
                   <aside className="w-full lg:w-1/3">
-                    <div className="flex h-full flex-col rounded-2xl border border-solaceGreen/30 bg-white/95 p-4 shadow-sm">
+                    <div className="flex h-full flex-col gap-3 rounded-2xl border border-solaceGreen/25 bg-white/80 p-4 shadow-sm backdrop-blur-sm">
                       <div className="flex items-center justify-between gap-3">
                         <h2 className="text-lg font-semibold text-solaceGreen">Agents in Focus</h2>
                         <span className="inline-flex items-center justify-center rounded-full bg-solaceGreen/10 px-3 py-1 text-xs font-semibold text-solaceGreen">
                           {agents.filter((agent) => !agent.isPending).length}/{MAX_AGENTS}
                         </span>
                       </div>
-                      <p className="mt-2 text-xs text-gray-500 leading-relaxed">{prioritiesBlurb}</p>
-                      <p className="mt-1 text-xs text-gray-500">Solace routes events between these agents so Salesforce, SAP, and others can retain their local automations.</p>
-                      <div className="mt-4 flex-1 overflow-y-auto pr-1" style={{ maxHeight: '85vh' }}>
+                      <p className="text-xs text-gray-600 leading-relaxed">{prioritiesBlurb}</p>
+                      <div className="flex-1 overflow-y-auto pr-1" style={{ maxHeight: '70vh' }}>
                         <div className="flex flex-col gap-4">
                           {agents.length ? (
                             agents
@@ -674,8 +690,8 @@ function App() {
                     </div>
                   </aside>
 
-                  <div className="relative flex-1 lg:min-h-[80vh]">
-                    <div className="relative h-[65vh] min-h-[420px] w-full rounded-3xl bg-white/92 p-4">
+                  <div className="relative flex-1 lg:min-h-[85vh]">
+                    <div className="relative h-[70vh] min-h-[420px] w-full rounded-3xl bg-white/65 p-3 shadow-sm">
                       <SolutionGraph
                         solutions={solutions}
                         agents={agents.slice(-MAX_AGENTS)}
@@ -704,8 +720,8 @@ function App() {
             )}
 
             {solutions.length > 0 && (
-              <div className="w-full rounded-3xl border border-solaceGreen/20 bg-white/90 px-6 py-5 shadow-sm">
-                <div className="grid gap-6 md:grid-cols-4">
+              <div className="w-full rounded-3xl border border-solaceGreen/20 bg-white/85 px-6 py-5 shadow-sm">
+                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-gray-500">Mesh Maturity Score</p>
                     <p className="mt-1 text-3xl font-semibold text-solaceGreen">{metrics.meshScore}</p>
